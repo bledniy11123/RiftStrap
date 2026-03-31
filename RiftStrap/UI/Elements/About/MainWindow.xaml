@@ -1,0 +1,70 @@
+<base:WpfUiWindow x:Class="RiftStrap.UI.Elements.About.MainWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pages="clr-namespace:RiftStrap.UI.Elements.About.Pages"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:base="clr-namespace:RiftStrap.UI.Elements.Base"
+             xmlns:resources="clr-namespace:RiftStrap.Resources"
+             mc:Ignorable="d"
+             Title="About RiftStrap"
+             Background="#0A0A0A"
+             MinWidth="800"
+             Width="800"
+             Height="460"
+             ExtendsContentIntoTitleBar="True"
+             WindowBackdropType="None"
+             WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Padding="8" x:Name="RootTitleBar" Grid.Row="0" ForceShutdown="False" MinimizeToTray="False" UseSnapLayout="True" Title="" />
+
+        <Grid Grid.Row="1" Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Sidebar -->
+            <Border Grid.Column="0" Background="#0D0D0D" BorderThickness="0,0,1,0" BorderBrush="#15FFFFFF">
+                <StackPanel Margin="16,8,16,16">
+                    <!-- Logo -->
+                    <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
+                        <Image Source="pack://application:,,,/Resources/RiftLogo.png" Width="40" Height="40"
+                               HorizontalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock Text="RiftStrap" FontSize="16" FontWeight="SemiBold" Foreground="#FAFAFA"
+                                   HorizontalAlignment="Center" Margin="0,8,0,0" />
+                        <TextBlock x:Name="VersionLabel" FontSize="10" Foreground="#555555"
+                                   HorizontalAlignment="Center" Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <!-- Hidden navigation -->
+                    <ui:NavigationStore x:Name="RootNavigation" Visibility="Collapsed" Frame="{Binding ElementName=RootFrame}" SelectedPageIndex="0">
+                        <ui:NavigationStore.Items>
+                            <ui:NavigationItem Content="About" PageType="{x:Type pages:AboutPage}" Icon="QuestionCircle48" />
+                            <ui:NavigationItem Content="Supporters" PageType="{x:Type pages:SupportersPage}" Icon="Heart24" />
+                            <ui:NavigationItem PageType="{x:Type pages:TranslatorsPage}" Icon="Translate24">
+                                <TextBlock Text="Translators" FontSize="10" />
+                            </ui:NavigationItem>
+                            <ui:NavigationItem Content="Licenses" PageType="{x:Type pages:LicensesPage}" Icon="Code24" />
+                        </ui:NavigationStore.Items>
+                    </ui:NavigationStore>
+
+                    <!-- Custom nav -->
+                    <Button Style="{StaticResource RiftNavItemStyle}" Content="About" Tag="0" Click="NavBtn_Click" />
+                    <Button Style="{StaticResource RiftNavItemStyle}" Content="Supporters" Tag="1" Click="NavBtn_Click" />
+                    <Button Style="{StaticResource RiftNavItemStyle}" Content="Translators" Tag="2" Click="NavBtn_Click" />
+                    <Button Style="{StaticResource RiftNavItemStyle}" Content="Licenses" Tag="3" Click="NavBtn_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Content -->
+            <Frame x:Name="RootFrame" Grid.Column="1" NavigationUIVisibility="Hidden" Margin="12,0,0,0" />
+        </Grid>
+    </Grid>
+</base:WpfUiWindow>

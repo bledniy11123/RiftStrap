@@ -1,0 +1,240 @@
+<base:WpfUiDialogBase
+    x:Class="RiftStrap.UI.Elements.Bootstrapper.FluentDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:base="clr-namespace:RiftStrap.UI.Elements.Bootstrapper.Base"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:resources="clr-namespace:RiftStrap.Resources"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:vms="clr-namespace:RiftStrap.UI.ViewModels.Bootstrapper"
+    xmlns:rift="clr-namespace:RiftStrap.UI.Controls.Rift"
+    Width="700" Height="340"
+    MinHeight="0"
+    d:DataContext="{d:DesignInstance vms:FluentDialogViewModel, IsDesignTimeCreatable=True}"
+    Background="Transparent" AllowsTransparency="True"
+    ResizeMode="NoResize" WindowBackdropType="None"
+    WindowStartupLocation="CenterScreen" WindowStyle="None"
+    mc:Ignorable="d">
+
+    <base:WpfUiDialogBase.Resources>
+        <!-- Entrance: fade + slide from left -->
+        <Storyboard x:Key="Entrance">
+            <DoubleAnimation Storyboard.TargetName="ContentGrid" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.7">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="RightPanelSlide" Storyboard.TargetProperty="X"
+                             From="30" To="0" Duration="0:0:0.6">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="LogoScale" Storyboard.TargetProperty="ScaleX"
+                             From="0.8" To="1" Duration="0:0:0.8">
+                <DoubleAnimation.EasingFunction><ElasticEase Oscillations="1" Springiness="8" EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="LogoScale" Storyboard.TargetProperty="ScaleY"
+                             From="0.8" To="1" Duration="0:0:0.8">
+                <DoubleAnimation.EasingFunction><ElasticEase Oscillations="1" Springiness="8" EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- Portal pulse (concentric rings expanding) -->
+        <Storyboard x:Key="PortalPulse" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="Ring1" Storyboard.TargetProperty="Opacity"
+                             From="0.12" To="0" Duration="0:0:3" />
+            <DoubleAnimation Storyboard.TargetName="Ring1Scale" Storyboard.TargetProperty="ScaleX"
+                             From="0.6" To="1.3" Duration="0:0:3" />
+            <DoubleAnimation Storyboard.TargetName="Ring1Scale" Storyboard.TargetProperty="ScaleY"
+                             From="0.6" To="1.3" Duration="0:0:3" />
+        </Storyboard>
+
+        <Storyboard x:Key="PortalPulse2" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="Ring2" Storyboard.TargetProperty="Opacity"
+                             From="0.1" To="0" Duration="0:0:3" BeginTime="0:0:1" />
+            <DoubleAnimation Storyboard.TargetName="Ring2Scale" Storyboard.TargetProperty="ScaleX"
+                             From="0.6" To="1.3" Duration="0:0:3" BeginTime="0:0:1" />
+            <DoubleAnimation Storyboard.TargetName="Ring2Scale" Storyboard.TargetProperty="ScaleY"
+                             From="0.6" To="1.3" Duration="0:0:3" BeginTime="0:0:1" />
+        </Storyboard>
+
+        <Storyboard x:Key="PortalPulse3" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="Ring3" Storyboard.TargetProperty="Opacity"
+                             From="0.08" To="0" Duration="0:0:3" BeginTime="0:0:2" />
+            <DoubleAnimation Storyboard.TargetName="Ring3Scale" Storyboard.TargetProperty="ScaleX"
+                             From="0.6" To="1.3" Duration="0:0:3" BeginTime="0:0:2" />
+            <DoubleAnimation Storyboard.TargetName="Ring3Scale" Storyboard.TargetProperty="ScaleY"
+                             From="0.6" To="1.3" Duration="0:0:3" BeginTime="0:0:2" />
+        </Storyboard>
+
+        <!-- Logo slow float -->
+        <Storyboard x:Key="LogoFloat" RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="LogoFloat" Storyboard.TargetProperty="Y"
+                             From="0" To="-6" Duration="0:0:3">
+                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- Shimmer -->
+        <Storyboard x:Key="Shimmer" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="ShimmerX" Storyboard.TargetProperty="X"
+                             From="-60" To="360" Duration="0:0:2">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- Status dot blink -->
+        <Storyboard x:Key="DotBlink" RepeatBehavior="Forever" AutoReverse="True">
+            <DoubleAnimation Storyboard.TargetName="StatusDot" Storyboard.TargetProperty="Opacity"
+                             From="0.3" To="1" Duration="0:0:0.8">
+                <DoubleAnimation.EasingFunction><SineEase EasingMode="EaseInOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </base:WpfUiDialogBase.Resources>
+
+    <Border CornerRadius="20" ClipToBounds="True" BorderThickness="1" BorderBrush="#0CFFFFFF">
+        <Grid x:Name="ContentGrid" Opacity="0">
+            <!-- Background -->
+            <Border CornerRadius="20">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                        <GradientStop Color="#060608" Offset="0" />
+                        <GradientStop Color="#0A0A0E" Offset="0.4" />
+                        <GradientStop Color="#080808" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- Drag -->
+            <Border CornerRadius="20" Background="Transparent" MouseLeftButtonDown="OnDrag" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ══ LEFT: PORTAL AREA ══ -->
+                <Grid Grid.Column="0">
+                    <!-- Dark vignette on left side -->
+                    <Border CornerRadius="20,0,0,20">
+                        <Border.Background>
+                            <RadialGradientBrush Center="0.5,0.45" RadiusX="0.6" RadiusY="0.6">
+                                <GradientStop Color="#10FFFFFF" Offset="0" />
+                                <GradientStop Color="#00FFFFFF" Offset="1" />
+                            </RadialGradientBrush>
+                        </Border.Background>
+                    </Border>
+
+                    <!-- Portal rings (expanding outward) -->
+                    <Ellipse x:Name="Ring1" Width="200" Height="200" StrokeThickness="1" Opacity="0"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                             RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.Stroke><SolidColorBrush Color="#FFFFFF" /></Ellipse.Stroke>
+                        <Ellipse.RenderTransform><ScaleTransform x:Name="Ring1Scale" ScaleX="0.6" ScaleY="0.6" /></Ellipse.RenderTransform>
+                    </Ellipse>
+                    <Ellipse x:Name="Ring2" Width="200" Height="200" StrokeThickness="0.8" Opacity="0"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                             RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.Stroke><SolidColorBrush Color="#FFFFFF" /></Ellipse.Stroke>
+                        <Ellipse.RenderTransform><ScaleTransform x:Name="Ring2Scale" ScaleX="0.6" ScaleY="0.6" /></Ellipse.RenderTransform>
+                    </Ellipse>
+                    <Ellipse x:Name="Ring3" Width="200" Height="200" StrokeThickness="0.6" Opacity="0"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                             RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.Stroke><SolidColorBrush Color="#FFFFFF" /></Ellipse.Stroke>
+                        <Ellipse.RenderTransform><ScaleTransform x:Name="Ring3Scale" ScaleX="0.6" ScaleY="0.6" /></Ellipse.RenderTransform>
+                    </Ellipse>
+
+                    <!-- Logo (floating) -->
+                    <Grid HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform x:Name="LogoScale" ScaleX="0.8" ScaleY="0.8" />
+                                <TranslateTransform x:Name="LogoFloat" Y="0" />
+                            </TransformGroup>
+                        </Grid.RenderTransform>
+                        <Image Source="pack://application:,,,/Resources/RiftLogo.png"
+                               Width="110" Height="110"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Grid>
+                </Grid>
+
+                <!-- ══ RIGHT: STATUS AREA ══ -->
+                <Grid Grid.Column="1" Margin="20,0,0,0">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="RightPanelSlide" X="30" />
+                    </Grid.RenderTransform>
+
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Status content (vertically centered) -->
+                    <StackPanel Grid.Row="0" VerticalAlignment="Center" Margin="16,0,32,0">
+                        <!-- Brand -->
+                        <TextBlock Text="RIFTSTRAP" FontSize="10" FontWeight="SemiBold" Foreground="#333333" Margin="0,0,0,8" />
+
+                        <!-- Status with live dot -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <Ellipse x:Name="StatusDot" Width="6" Height="6" Fill="#FAFAFA" Opacity="0.5"
+                                     VerticalAlignment="Center" Margin="0,1,8,0" />
+                            <TextBlock FontSize="16" FontWeight="Medium" Foreground="#E0E0E0"
+                                       Text="{Binding Message, Mode=OneWay}" TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- Progress info row -->
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Preparing your experience..." FontSize="11" Foreground="#333333" VerticalAlignment="Center" />
+                            <TextBlock x:Name="PercentText" Grid.Column="1" FontSize="12" FontWeight="SemiBold" Foreground="#666666"
+                                       FontFamily="JetBrains Mono, Cascadia Code, Consolas" VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- Progress bar (full width) -->
+                        <Grid Height="3" Margin="0,0,0,10">
+                            <Border CornerRadius="1.5" Background="#0CFFFFFF" />
+                            <ProgressBar x:Name="RealProgress" Height="3"
+                                         Background="Transparent" BorderThickness="0" Foreground="#FAFAFA"
+                                         IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
+                                         Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                         Value="{Binding ProgressValue, Mode=OneWay}" />
+                            <!-- Shimmer -->
+                            <Border Height="3" CornerRadius="1.5" ClipToBounds="True" IsHitTestVisible="False">
+                                <Rectangle Width="50" Height="3" HorizontalAlignment="Left" Opacity="0.2">
+                                    <Rectangle.Fill>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#00FFFFFF" Offset="0" />
+                                            <GradientStop Color="#FFFFFF" Offset="0.5" />
+                                            <GradientStop Color="#00FFFFFF" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Rectangle.Fill>
+                                    <Rectangle.RenderTransform>
+                                        <TranslateTransform x:Name="ShimmerX" X="-60" />
+                                    </Rectangle.RenderTransform>
+                                </Rectangle>
+                            </Border>
+                        </Grid>
+
+                    </StackPanel>
+
+                    <!-- Cancel (bottom right) -->
+                    <rift:RiftButton Grid.Row="1"
+                                     HorizontalAlignment="Right"
+                                     Content="{x:Static resources:Strings.Common_Cancel}"
+                                     Variant="Ghost" Padding="20,8" FontSize="11"
+                                     Command="{Binding CancelInstallCommand}"
+                                     IsEnabled="{Binding CancelEnabled, Mode=OneWay}"
+                                     Margin="0,0,24,20" />
+                </Grid>
+
+                <!-- Divider line between panels -->
+                <Border Grid.Column="0" HorizontalAlignment="Right" Width="1" Margin="0,40,0,40"
+                        Opacity="0.06" Background="#FFFFFF" />
+            </Grid>
+        </Grid>
+    </Border>
+</base:WpfUiDialogBase>

@@ -1,0 +1,89 @@
+<base:WpfDialogBase x:Class="RiftStrap.UI.Elements.Bootstrapper.ByfronDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:base="clr-namespace:RiftStrap.UI.Elements.Bootstrapper.Base"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:rift="clr-namespace:RiftStrap.UI.Controls.Rift"
+        mc:Ignorable="d"
+        Width="600" Height="380"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        WindowStartupLocation="CenterScreen"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Border CornerRadius="18" ClipToBounds="True" BorderThickness="1" BorderBrush="#10FFFFFF">
+        <Grid>
+            <!-- Background gradient -->
+            <Border CornerRadius="18">
+                <Border.Background>
+                    <RadialGradientBrush Center="0.5,0.4" RadiusX="0.8" RadiusY="0.8">
+                        <GradientStop Color="#0C0C10" Offset="0" />
+                        <GradientStop Color="#060606" Offset="1" />
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- Top light bleed -->
+            <Border CornerRadius="18,18,0,0" Height="120" VerticalAlignment="Top" IsHitTestVisible="False">
+                <Border.Background>
+                    <RadialGradientBrush Center="0.5,0" GradientOrigin="0.5,-0.3" RadiusX="0.7" RadiusY="0.8">
+                        <GradientStop Color="#08FFFFFF" Offset="0" />
+                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- Drag surface -->
+            <Border CornerRadius="18" Background="Transparent" MouseLeftButtonDown="OnDrag" />
+
+            <!-- Close button -->
+            <Button Margin="0,12,14,0" VerticalAlignment="Top" HorizontalAlignment="Right"
+                    Width="28" Height="28" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                    Visibility="{Binding CancelButtonVisibility, Mode=OneWay}"
+                    Command="{Binding CancelInstallCommand}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Width="28" Height="28">
+                            <TextBlock Text="✕" FontSize="10" Foreground="#444444" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- Version text -->
+            <TextBlock Margin="18,14,0,0" VerticalAlignment="Top" HorizontalAlignment="Left"
+                       FontSize="10" Foreground="#333333"
+                       Text="{Binding VersionText}" Visibility="{Binding VersionTextVisibility, Mode=OneWay}" />
+
+            <!-- Content -->
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <!-- Rift logo -->
+                <Image Source="pack://application:,,,/Resources/RiftLogo.png"
+                       Width="80" Height="80" HorizontalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,20" />
+
+                <!-- Status text -->
+                <TextBlock TextAlignment="Center" Text="{Binding Message}"
+                           Foreground="#C0C0C0" FontSize="15" FontWeight="Medium"
+                           Margin="0,0,0,24" />
+
+                <!-- Progress bar -->
+                <Grid Width="360" Height="3">
+                    <Border CornerRadius="1.5" Background="#0CFFFFFF" />
+                    <ProgressBar Height="3" Background="Transparent" BorderThickness="0"
+                                 Foreground="#FAFAFA"
+                                 IsIndeterminate="{Binding ProgressIndeterminate}"
+                                 Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                 Value="{Binding ProgressValue}" />
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</base:WpfDialogBase>

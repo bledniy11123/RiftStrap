@@ -1,0 +1,261 @@
+<ui:UiPage x:Class="RiftStrap.UI.Elements.Settings.Pages.BehaviourPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      xmlns:local="clr-namespace:RiftStrap.UI.Elements.Settings.Pages"
+      xmlns:controls="clr-namespace:RiftStrap.UI.Elements.Controls"
+      xmlns:models="clr-namespace:RiftStrap.UI.ViewModels.Settings"
+      xmlns:resources="clr-namespace:RiftStrap.Resources"
+      xmlns:rift="clr-namespace:RiftStrap.UI.Controls.Rift"
+      d:DataContext="{d:DesignInstance Type=models:BehaviourViewModel}"
+      mc:Ignorable="d"
+      d:DesignHeight="600" d:DesignWidth="800"
+      Title="BehaviourPage"
+      Scrollable="True"
+      Loaded="OnPageLoaded">
+
+    <ui:UiPage.Resources>
+        <!-- Switches: simple list feel, 2 sections -->
+        <Storyboard x:Key="SectionEntrance">
+            <DoubleAnimation Storyboard.TargetName="S1" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0" />
+            <DoubleAnimation Storyboard.TargetName="S1Slide" Storyboard.TargetProperty="Y"
+                             From="18" To="0" Duration="0:0:0.5" BeginTime="0:0:0">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="S2" Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.4" BeginTime="0:0:0.08" />
+            <DoubleAnimation Storyboard.TargetName="S2Slide" Storyboard.TargetProperty="Y"
+                             From="18" To="0" Duration="0:0:0.5" BeginTime="0:0:0.08">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut" /></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </ui:UiPage.Resources>
+
+    <Grid Margin="8,0,20,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══ S1: Title + accent line ═══ -->
+        <StackPanel x:Name="S1" Grid.Row="0" Opacity="0" Margin="0,0,0,20">
+            <StackPanel.RenderTransform><TranslateTransform x:Name="S1Slide" Y="18" /></StackPanel.RenderTransform>
+
+            <TextBlock Text="Behaviour" FontSize="22" FontWeight="SemiBold" Foreground="#FAFAFA" />
+            <TextBlock Text="Configure launch and update settings" FontSize="13" Foreground="#444444" Margin="0,5,0,0" />
+            <Border Width="40" Height="2" CornerRadius="1" HorizontalAlignment="Left" Margin="0,12,0,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                        <GradientStop Color="#FAFAFA" Offset="0" />
+                        <GradientStop Color="#00FFFFFF" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </StackPanel>
+
+        <!-- ═══ S2: Toggle list — label+description left, toggle right ═══ -->
+        <StackPanel x:Name="S2" Grid.Row="1" Opacity="0">
+            <StackPanel.RenderTransform><TranslateTransform x:Name="S2Slide" Y="18" /></StackPanel.RenderTransform>
+
+            <TextBlock Text="LAUNCH SETTINGS" FontSize="9" Foreground="#2A2A2A" FontWeight="Bold" Margin="0,0,0,14" />
+
+            <!-- Row: Multi-Instance Launching -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Multi-Instance Launching" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="Allow running multiple Roblox instances at the same time" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding MultiInstanceLaunching, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Confirm Launches -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_ConfirmLaunches_Title}" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_ConfirmLaunches_Description}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ConfirmLaunches, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Background Updates -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_BackgroundUpdates_Title}" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_BackgroundUpdates_Description}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding BackgroundUpdates, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Force Roblox Reinstall -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRobloxInstallationMissing, Mode=OneTime}" Value="True">
+                                <Setter Property="IsEnabled" Value="False" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_ForceRobloxReinstall_Title}" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_ForceRobloxReinstall_Description}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ForceRobloxReinstallation, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Roblox Channel -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="200" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Roblox Channel" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{Binding SelectedChannelDescription}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Padding="10,5,10,5" ItemsSource="{Binding ChannelDisplayNames, Mode=OneWay}" SelectedItem="{Binding SelectedChannelDisplay, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Version Pin -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_VersionPin_Title}" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{Binding PinnedVersionDisplay}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="{x:Static resources:Strings.Menu_Behaviour_VersionPin_Unpin}" Command="{Binding ClearPinCommand}" VerticalAlignment="Center" Margin="0,0,8,0" Padding="12,5,12,5">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsVersionPinned}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Grid.Column="2" Content="{x:Static resources:Strings.Menu_Behaviour_VersionPin_PinCustom}" Command="{Binding ManualPinCommand}" VerticalAlignment="Center" Padding="12,5,12,5" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
+            <!-- Row: Allow Version Downgrade -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_Downgrade_Title}" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="{x:Static resources:Strings.Menu_Behaviour_Downgrade_Description}" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AllowVersionDowngrade, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,20" />
+
+            <!-- Row: Preferred Binary -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Preferred Binary" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="Choose which Roblox binary to launch and fetch versions for" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ComboBox Grid.Column="1" Width="130" VerticalAlignment="Center"
+                          ItemsSource="{Binding BinaryOptions}" SelectedItem="{Binding PreferredBinary, Mode=TwoWay}"
+                          Background="#0A0A0A" Foreground="#FAFAFA" BorderBrush="#1A1A1A" FontSize="12" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,20" />
+
+            <!-- AVAILABLE VERSIONS -->
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="AVAILABLE VERSIONS" FontSize="9" Foreground="#2A2A2A" FontWeight="Bold" VerticalAlignment="Center" />
+                <rift:RiftButton Grid.Column="1" Content="Fetch Latest" Variant="Ghost" FontSize="11" Padding="12,4"
+                                 Command="{Binding FetchVersionsCommand}" />
+            </Grid>
+
+            <TextBlock Text="Fetching versions..." FontSize="12" Foreground="#444444" Margin="0,0,0,10">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFetchingVersions}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <ItemsControl ItemsSource="{Binding VersionHistory}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock FontSize="13" Foreground="#FAFAFA">
+                                        <Run Text="{Binding Version, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="11" Foreground="#444444">
+                                        <Run Text="{Binding ShortGuid, Mode=OneWay}" />
+                                        <Run Text=" — " Foreground="#1A1A1A" />
+                                        <Run Text="{Binding DateText, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                                <rift:RiftButton Grid.Column="1" Content="Pin" Variant="Ghost" FontSize="11" Padding="10,4"
+                                                 Click="PinVersion_Click" Tag="{Binding}" VerticalAlignment="Center" />
+                            </Grid>
+                            <Border Height="1" Background="#06FFFFFF" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Grid>
+</ui:UiPage>

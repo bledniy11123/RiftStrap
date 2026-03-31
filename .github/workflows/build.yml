@@ -1,0 +1,43 @@
+name: Build RiftStrap
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore RiftStrap.sln
+
+      - name: Build
+        run: dotnet build RiftStrap.sln -c Release --no-restore
+
+      - name: Publish
+        run: dotnet publish RiftStrap/RiftStrap.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RiftStrap-x64
+          path: publish/RiftStrap.exe
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/RiftStrap.exe
+          generate_release_notes: true
