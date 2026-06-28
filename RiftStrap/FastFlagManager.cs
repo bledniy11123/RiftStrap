@@ -68,7 +68,7 @@ namespace RiftStrap
             {
                 if (Prop.ContainsKey(key))
                 {
-                    if (key == Prop[key].ToString())
+                    if (value.ToString() == Prop[key].ToString())   // no-op only when the VALUE is unchanged
                         return;
 
                     App.Logger.WriteLine(LOG_IDENT, $"Changing of '{key}' from '{Prop[key]}' to '{value}' is pending");

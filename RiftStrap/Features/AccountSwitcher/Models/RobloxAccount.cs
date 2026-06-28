@@ -22,6 +22,9 @@ namespace RiftStrap.Features.AccountSwitcher.Models
 
         [JsonIgnore]
         public string? Cookie { get; set; }
+
+        [JsonIgnore]
+        public bool IsActive { get; set; }
     }
 
     public class AccountStore

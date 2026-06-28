@@ -126,16 +126,24 @@ namespace RiftStrap
             if (!Initialized)
                 return;
 
+            // async void: a logging failure (e.g. the stream/semaphore disposed during shutdown) must
+            // never escape and crash the process, so swallow everything.
             try
             {
                 await _semaphore.WaitAsync();
-                await _filestream!.WriteAsync(Encoding.UTF8.GetBytes($"{message}\r\n"));
-
-                _ = _filestream.FlushAsync();
+                try
+                {
+                    await _filestream!.WriteAsync(Encoding.UTF8.GetBytes($"{message}\r\n"));
+                    _ = _filestream.FlushAsync();
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
             }
-            finally
+            catch
             {
-                _semaphore.Release();
+                // ignore — logging is best-effort
             }
         }
     }

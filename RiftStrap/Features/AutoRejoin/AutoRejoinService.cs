@@ -7,7 +7,7 @@ namespace RiftStrap.Features.AutoRejoin
         {
             "Time to disconnect replication data:",
             "Connection lost",
-            "Disconnected",
+            // bare "Disconnected" removed — it matched benign log lines and triggered false rejoins
         };
 
         private static readonly string[] KickPatterns =
@@ -22,6 +22,7 @@ namespace RiftStrap.Features.AutoRejoin
         public bool RejoinOnKick { get; set; } = false;
 
         private int _retryCount;
+        private bool _isRejoining;
         private long _lastPlaceId;
         private string? _lastServerId;
 
@@ -37,7 +38,7 @@ namespace RiftStrap.Features.AutoRejoin
 
         public async Task<bool> HandleDisconnectAsync(string logLine)
         {
-            if (!Enabled || _lastPlaceId == 0)
+            if (!Enabled || _lastPlaceId == 0 || _isRejoining)
                 return false;
 
             bool isKick = KickPatterns.Any(p => logLine.Contains(p, StringComparison.OrdinalIgnoreCase));
@@ -53,28 +54,36 @@ namespace RiftStrap.Features.AutoRejoin
                 return false;
             }
 
-            _retryCount++;
-            var reason = isKick ? "Kicked" : "Disconnected";
-            App.Logger.WriteLine("AutoRejoin", $"{reason} — rejoining in {RetryDelaySeconds}s (attempt {_retryCount}/{MaxRetries})");
-            OnRejoinAttempt?.Invoke($"{reason} — retry {_retryCount}/{MaxRetries}");
-
-            await Task.Delay(RetryDelaySeconds * 1000);
-
-            var url = _lastServerId != null
-                ? $"roblox://experiences/start?placeId={_lastPlaceId}&gameInstanceId={_lastServerId}"
-                : $"roblox://experiences/start?placeId={_lastPlaceId}";
-
+            _isRejoining = true;   // block re-entrant rejoins racing on _retryCount until this one finishes
             try
             {
-                Utilities.ShellExecute(url);
-                OnRejoinResult?.Invoke(true);
-                return true;
+                _retryCount++;
+                var reason = isKick ? "Kicked" : "Disconnected";
+                App.Logger.WriteLine("AutoRejoin", $"{reason} — rejoining in {RetryDelaySeconds}s (attempt {_retryCount}/{MaxRetries})");
+                OnRejoinAttempt?.Invoke($"{reason} — retry {_retryCount}/{MaxRetries}");
+
+                await Task.Delay(RetryDelaySeconds * 1000);
+
+                var url = _lastServerId != null
+                    ? $"roblox://experiences/start?placeId={_lastPlaceId}&gameInstanceId={_lastServerId}"
+                    : $"roblox://experiences/start?placeId={_lastPlaceId}";
+
+                try
+                {
+                    Utilities.ShellExecute(url);
+                    OnRejoinResult?.Invoke(true);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine("AutoRejoin", $"Rejoin failed: {ex.Message}");
+                    OnRejoinResult?.Invoke(false);
+                    return false;
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                App.Logger.WriteLine("AutoRejoin", $"Rejoin failed: {ex.Message}");
-                OnRejoinResult?.Invoke(false);
-                return false;
+                _isRejoining = false;
             }
         }
 

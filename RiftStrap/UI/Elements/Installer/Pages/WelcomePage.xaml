@@ -55,7 +55,7 @@
                                Foreground="#888888" />
                     <ui:Button Grid.Column="2" Icon="ArrowDownload16" Content="Download"
                                Command="models:GlobalViewModel.OpenWebpageCommand"
-                               CommandParameter="https://github.com/riftstrap/riftstrap/releases/latest" />
+                               CommandParameter="https://github.com/N3XT3R1337/RiftStrap/releases/latest" />
                 </Grid>
             </Border>
 

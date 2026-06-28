@@ -22,35 +22,66 @@ namespace RiftStrap.UI.Elements.Settings.Pages
         private void RefreshList()
         {
             var accounts = _manager.Accounts.OrderByDescending(a => a.LastUsed ?? a.AddedAt).ToList();
+            foreach (var a in accounts)
+                a.IsActive = a.UserId == _manager.ActiveUserId;
             AccountsList.ItemsSource = accounts;
             S3.Visibility = accounts.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void AddAccount_Click(object sender, RoutedEventArgs e)
         {
-            var cookie = UI.Controls.Rift.RiftInputDialog.Show(
-                "Add Roblox Account",
-                "Paste your .ROBLOSECURITY cookie:\n\n(Your cookie is encrypted and stored locally)");
+            // Accept a single cookie OR a whole list (one cookie per line) — multiline input.
+            var input = UI.Controls.Rift.RiftInputDialog.Show(
+                "Add Roblox Account(s)",
+                "Paste one .ROBLOSECURITY cookie — or a whole list, one cookie per line:\n\n(Cookies are encrypted and stored locally)",
+                "", true);
 
-            if (string.IsNullOrEmpty(cookie)) return;
+            if (string.IsNullOrWhiteSpace(input)) return;
 
-            cookie = cookie.Trim();
-            if (cookie.StartsWith("_|"))
-                {  }
-            else if (cookie.Contains("ROBLOSECURITY="))
-                cookie = cookie.Split("ROBLOSECURITY=")[1].Split(';')[0].Trim();
+            var cookies = input
+                .Replace("\r", "")
+                .Split('\n')
+                .Select(ParseCookie)
+                .Where(c => !string.IsNullOrEmpty(c))
+                .Distinct()
+                .ToList();
 
-            var account = await _manager.AddAccountAsync(cookie);
+            if (cookies.Count == 0) return;
 
-            if (account != null)
+            int added = 0, failed = 0;
+            var names = new List<string>();
+
+            foreach (var cookie in cookies)
             {
-                RefreshList();
-                Frontend.ShowMessageBox($"Added: {account.DisplayName} (@{account.Username})", MessageBoxImage.Information);
+                var account = await _manager.AddAccountAsync(cookie);
+                if (account != null) { added++; names.Add("@" + account.Username); }
+                else failed++;
             }
+
+            RefreshList();
+
+            if (added == 0)
+                Frontend.ShowMessageBox("No accounts added — the cookie(s) were invalid or expired.", MessageBoxImage.Warning);
+            else if (cookies.Count == 1)
+                Frontend.ShowMessageBox($"Added: {names[0]}", MessageBoxImage.Information);
             else
-            {
-                Frontend.ShowMessageBox("Invalid cookie or failed to authenticate.", MessageBoxImage.Warning);
-            }
+                Frontend.ShowMessageBox(
+                    $"Added {added} account(s)" + (failed > 0 ? $", {failed} failed" : "") + ".\n" + string.Join(", ", names),
+                    MessageBoxImage.Information);
+        }
+
+        // Extract the bare .ROBLOSECURITY value from a raw cookie, a "...ROBLOSECURITY=xxx;..." string,
+        // or a "_|WARNING..." token. Returns "" for empty/garbage lines.
+        private static string ParseCookie(string raw)
+        {
+            raw = raw.Trim();
+            if (string.IsNullOrEmpty(raw))
+                return "";
+            if (raw.StartsWith("_|"))
+                return raw;
+            if (raw.Contains("ROBLOSECURITY="))
+                return raw.Split("ROBLOSECURITY=")[1].Split(';')[0].Trim();
+            return raw;
         }
 
         private void AccountCard_Click(object sender, MouseButtonEventArgs e)

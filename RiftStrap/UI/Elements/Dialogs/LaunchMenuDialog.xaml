@@ -226,11 +226,11 @@
                         <Ellipse Width="3" Height="3" Fill="#222222" VerticalAlignment="Center" Margin="4,0" />
                         <Button Style="{StaticResource RiftNavItemStyle}" Content="Wiki" Padding="10,4" FontSize="11"
                                 Foreground="#444444" Command="models:GlobalViewModel.OpenWebpageCommand"
-                                CommandParameter="https://github.com/riftstrap/riftstrap/wiki" />
+                                CommandParameter="https://github.com/N3XT3R1337/RiftStrap/wiki" />
                         <Ellipse Width="3" Height="3" Fill="#222222" VerticalAlignment="Center" Margin="4,0" />
                         <Button Style="{StaticResource RiftNavItemStyle}" Content="GitHub" Padding="10,4" FontSize="11"
                                 Foreground="#444444" Command="models:GlobalViewModel.OpenWebpageCommand"
-                                CommandParameter="https://github.com/riftstrap/riftstrap" />
+                                CommandParameter="https://github.com/N3XT3R1337/RiftStrap" />
                     </StackPanel>
                 </Border>
             </Grid>

@@ -52,11 +52,9 @@ namespace RiftStrap
             }
             catch (Exception)
             {
-
-                App.Logger.WriteLine("Utilities::CompareVersions", "An exception occurred when comparing versions");
-                App.Logger.WriteLine("Utilities::CompareVersions", $"versionStr1={versionStr1} versionStr2={versionStr2}");
-
-                throw;
+                // a malformed/non-numeric version string must NOT crash the upgrade flow; treat as Equal.
+                App.Logger.WriteLine("Utilities::CompareVersions", $"Could not compare versions (versionStr1={versionStr1} versionStr2={versionStr2}); treating as Equal");
+                return VersionComparison.Equal;
             }
         }
 
@@ -114,6 +112,25 @@ namespace RiftStrap
                 App.Logger.WriteLine(LOG_IDENT, $"Unable to fetch processes!");
                 App.Logger.WriteException(LOG_IDENT, ex);
                 return Array.Empty<Process>();
+            }
+        }
+
+        // Lightweight, leak-free liveness check (disposes the Process handle). Prefer this over
+        // GetProcessesSafe().Any(...) in poll loops, which leaks a handle for every process each tick.
+        public static bool IsProcessRunning(int pid)
+        {
+            try
+            {
+                using var p = Process.GetProcessById(pid);
+                return !p.HasExited;
+            }
+            catch (ArgumentException)
+            {
+                return false;   // no process with that id -> not running
+            }
+            catch
+            {
+                return true;    // indeterminate -> assume running so we don't break a wait loop early
             }
         }
 

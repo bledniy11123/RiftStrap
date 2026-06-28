@@ -67,11 +67,20 @@ namespace RiftStrap.Integrations
 
                 while (true)
                 {
-                    logFileInfo = new DirectoryInfo(logDirectory)
+                    var newest = new DirectoryInfo(logDirectory)
                         .GetFiles()
                         .Where(x => x.Name.Contains("Player", StringComparison.OrdinalIgnoreCase) && x.CreationTime <= DateTime.Now)
                         .OrderByDescending(x => x.CreationTime)
-                        .First();
+                        .FirstOrDefault();
+
+                    if (newest is null)   // no Player log yet -> keep waiting instead of throwing
+                    {
+                        if (IsDisposed) return;
+                        await Task.Delay(1000);
+                        continue;
+                    }
+
+                    logFileInfo = newest;
 
                     if (logFileInfo.CreationTime.AddSeconds(15) > DateTime.Now)
                         break;
@@ -89,7 +98,16 @@ namespace RiftStrap.Integrations
 
             OnLogOpen?.Invoke(this, EventArgs.Empty);
 
-            var logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            FileStream logFileStream;
+            try
+            {
+                logFileStream = logFileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine(LOG_IDENT, $"Failed to open log file '{LogLocation}': {ex.Message}");
+                return;
+            }
 
             App.Logger.WriteLine(LOG_IDENT, $"Opened {LogLocation}");
 

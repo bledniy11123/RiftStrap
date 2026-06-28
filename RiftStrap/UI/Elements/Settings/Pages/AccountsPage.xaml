@@ -77,7 +77,18 @@
                                     <StackPanel Orientation="Horizontal">
                                         <!-- Active indicator as dot next to name -->
                                         <Ellipse x:Name="ActiveBadge" Width="6" Height="6" Fill="{DynamicResource RiftAccentBrush}"
-                                                 VerticalAlignment="Center" Margin="0,0,6,0" Visibility="Collapsed" />
+                                                 VerticalAlignment="Center" Margin="0,0,6,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
                                         <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold" Foreground="#EEEEEE" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                     <TextBlock FontSize="10" Foreground="#444444" Margin="0,2,0,0">

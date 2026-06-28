@@ -606,14 +606,14 @@ namespace RiftStrap
             if (!Directory.Exists(rbxLogDir))
                 Directory.CreateDirectory(rbxLogDir);
 
-            var logWatcher = new FileSystemWatcher()
+            using var logWatcher = new FileSystemWatcher()
             {
                 Path = rbxLogDir,
                 Filter = "*.log",
                 EnableRaisingEvents = true
             };
 
-            var logCreatedEvent = new AutoResetEvent(false);
+            using var logCreatedEvent = new AutoResetEvent(false);
 
             logWatcher.Created += (_, e) =>
             {
@@ -621,6 +621,28 @@ namespace RiftStrap
                 logFileName = e.FullPath;
                 logCreatedEvent.Set();
             };
+
+            // Multi-instance: before the client starts, have a dedicated holder OWN
+            // ROBLOX_singletonMutex so no Roblox client owns it (otherwise launching a 2nd client
+            // makes Roblox close the 1st). The holder persists while any client runs and self-dedups.
+            App.Logger.WriteLine(LOG_IDENT, $"[MI] MultiInstanceLaunching={App.Settings.Prop.MultiInstanceLaunching}, IsStudioLaunch={IsStudioLaunch}");
+            if (App.Settings.Prop.MultiInstanceLaunching && !IsStudioLaunch)
+            {
+                try
+                {
+                    using var miReady = new EventWaitHandle(false, EventResetMode.ManualReset, "RiftStrap-MultiInstanceReady");
+                    miReady.Reset();   // clear any stale signal so we WAIT for THIS launch's holder to own the mutex
+                    Process.Start(Paths.Process, "-mutexholder");
+                    if (miReady.WaitOne(TimeSpan.FromSeconds(8)))
+                        App.Logger.WriteLine(LOG_IDENT, "Multi-instance singleton mutex holder is ready");
+                    else
+                        App.Logger.WriteLine(LOG_IDENT, "Timed out waiting for the multi-instance mutex holder");
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to start multi-instance mutex holder: {ex.Message}");
+                }
+            }
 
             try
             {
@@ -641,28 +663,9 @@ namespace RiftStrap
 
             App.Logger.WriteLine(LOG_IDENT, $"Started Roblox (PID {_appPid}), waiting for log file");
 
-            if (App.Settings.Prop.MultiInstanceLaunching)
-            {
-                Task.Run(() =>
-                {
-                    Thread.Sleep(3000);
-                    try
-                    {
-                        foreach (var name in new[] { "ROBLOX_singletonMutex", "ROBLOX_singletonEvent" })
-                        {
-                            if (EventWaitHandle.TryOpenExisting(name, out var handle))
-                            {
-                                handle.Close();
-                                App.Logger.WriteLine(LOG_IDENT, $"Closed {name} for multi-instance");
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, $"Multi-instance mutex cleanup failed: {ex.Message}");
-                    }
-                });
-            }
+            // Multi-instance is handled BEFORE Process.Start by a dedicated -mutexholder process
+            // (see the block above the Process.Start call). Closing a redundant handle here never
+            // released Roblox's own mutex, so the old cleanup block was removed.
 
             logCreatedEvent.WaitOne(TimeSpan.FromSeconds(15));
 
@@ -1234,7 +1237,7 @@ namespace RiftStrap
 
             AppData.DistributionState.Size = distributionSize;
 
-            int totalSize = App.PlayerState.Prop.Size + App.PlayerState.Prop.Size;
+            int totalSize = App.PlayerState.Prop.Size + App.StudioState.Prop.Size;
 
             using (var uninstallKey = Registry.CurrentUser.CreateSubKey(App.UninstallKey))
             {

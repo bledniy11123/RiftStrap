@@ -8,7 +8,7 @@ namespace RiftStrap.UI.Controls.Rift
     {
         public string Result { get; private set; } = "";
 
-        public RiftInputDialog(string title, string prompt, string defaultValue = "")
+        public RiftInputDialog(string title, string prompt, string defaultValue = "", bool multiline = false)
         {
             InitializeComponent();
 
@@ -17,6 +17,16 @@ namespace RiftStrap.UI.Controls.Rift
             TitleText.Text = title;
             PromptText.Text = prompt;
             InputBox.Text = defaultValue;
+
+            if (multiline)
+            {
+                InputBox.AcceptsReturn = true;
+                InputBox.TextWrapping = System.Windows.TextWrapping.Wrap;
+                InputBox.VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto;
+                InputBox.VerticalContentAlignment = System.Windows.VerticalAlignment.Top;
+                InputBox.Height = 140;
+                Height = 400;   // grow the window to fit the multi-line box
+            }
 
             MouseLeftButtonDown += (_, _) => DragMove();
             Loaded += (_, _) =>
@@ -48,9 +58,9 @@ namespace RiftStrap.UI.Controls.Rift
             Close();
         }
 
-        public static string? Show(string title, string prompt, string defaultValue = "")
+        public static string? Show(string title, string prompt, string defaultValue = "", bool multiline = false)
         {
-            var dialog = new RiftInputDialog(title, prompt, defaultValue);
+            var dialog = new RiftInputDialog(title, prompt, defaultValue, multiline);
 
             if (Application.Current.MainWindow is { IsLoaded: true } main)
                 dialog.Owner = main;

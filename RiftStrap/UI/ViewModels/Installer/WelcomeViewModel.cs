@@ -5,7 +5,7 @@ namespace RiftStrap.UI.ViewModels.Installer
 
         public string MainText => String.Format(
             Strings.Installer_Welcome_MainText,
-            "[github.com/riftstrap/riftstrap](https://github.com/riftstrap/riftstrap)",
+            "[github.com/N3XT3R1337/RiftStrap](https://github.com/N3XT3R1337/RiftStrap)",
             "[riftstrap.com](https://riftstrap.com)"
         );
 

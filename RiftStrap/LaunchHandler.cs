@@ -57,6 +57,11 @@ namespace RiftStrap
                 App.Logger.WriteLine(LOG_IDENT, "Opening watcher");
                 LaunchWatcher();
             }
+            else if (App.LaunchSettings.MutexHolderFlag.Active)
+            {
+                App.Logger.WriteLine(LOG_IDENT, "Opening multi-instance mutex holder");
+                LaunchMultiInstanceLock();
+            }
             else if (App.LaunchSettings.BackgroundUpdaterFlag.Active)
             {
                 App.Logger.WriteLine(LOG_IDENT, "Opening background updater");
@@ -220,7 +225,7 @@ namespace RiftStrap
                 App.Terminate(ErrorCode.ERROR_FILE_NOT_FOUND);
             }
 
-            if (App.Settings.Prop.ConfirmLaunches && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
+            if (App.Settings.Prop.ConfirmLaunches && !App.Settings.Prop.MultiInstanceLaunching && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
             {
 
                 var result = Frontend.ShowMessageBox(Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
@@ -286,6 +291,94 @@ namespace RiftStrap
 
                 App.Terminate();
             });
+        }
+
+        public static void LaunchMultiInstanceLock()
+        {
+            // Dedicated diagnostic file (the shared logger goes into NoWriteMode when several RiftStrap
+            // processes start at once, so the holder's own log lines get dropped — this never does).
+            string diagPath;
+            try { diagPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "RiftStrap", "Logs", "mutexholder-diag.log"); }
+            catch { diagPath = Path.Combine(Path.GetTempPath(), "riftstrap-mutexholder.log"); }
+            void Diag(string m) { try { File.AppendAllText(diagPath, $"{Environment.TickCount} | {m}\r\n"); } catch { } }
+
+            Diag("=== holder process started ===");
+
+            // Singleton: only one holder should exist at a time (across concurrent launches).
+            using var interlock = new InterProcessLock("MultiInstanceMutex");
+            if (!interlock.IsAcquired)
+            {
+                // Another holder already owns ROBLOX_singletonMutex — just unblock the bootstrapper.
+                try { using var ev = new EventWaitHandle(false, EventResetMode.ManualReset, "RiftStrap-MultiInstanceReady"); ev.Set(); } catch { }
+                Diag("another holder already owns the IPL -> signalled ready and exit (normal for 2nd+ launch)");
+                App.Terminate();
+                return;
+            }
+
+            Mutex? mutex = null;
+            EventWaitHandle? ready = null;
+            try
+            {
+                // Own ROBLOX_singletonMutex from a NON-Roblox process BEFORE any client starts, so no
+                // Roblox client owns it and they all coexist (same mechanism as ROBLOX_MULTI/fishstrap).
+                mutex = new Mutex(true, "ROBLOX_singletonMutex", out bool created);
+                bool owned = created;
+                if (!created)
+                {
+                    // initiallyOwned only takes effect when WE create the object; if it already
+                    // exists (a leftover/abandoned handle) we must explicitly ACQUIRE ownership,
+                    // otherwise Roblox can still claim it and kill the other client.
+                    try { owned = mutex.WaitOne(TimeSpan.FromSeconds(5)); }
+                    catch (AbandonedMutexException) { owned = true; Diag("acquired abandoned mutex"); }
+                }
+                Diag($"ROBLOX_singletonMutex created={created} owned={owned}");
+
+                // Tell the launching bootstrapper the mutex is owned; keep the handle open so the
+                // event stays set for later launches while this holder lives.
+                ready = new EventWaitHandle(false, EventResetMode.ManualReset, "RiftStrap-MultiInstanceReady");
+                ready.Set();
+                Diag("signalled ready");
+
+                // Wait up to 60s for the first client.
+                for (int i = 0; i < 60 && !IsAnyRobloxRunning(); i++)
+                    Thread.Sleep(1000);
+                Diag($"first-client grace done, robloxRunning={IsAnyRobloxRunning()}");
+
+                // Hold the mutex while ANY client runs. Only release after Roblox has been gone for
+                // several consecutive checks (~12s) so a brief process gap during Roblox's own
+                // restart/bootstrap never releases the mutex and lets a client claim it.
+                int goneStreak = 0;
+                while (goneStreak < 6)
+                {
+                    goneStreak = IsAnyRobloxRunning() ? 0 : goneStreak + 1;
+                    Thread.Sleep(2000);
+                }
+                Diag("no clients for ~12s -> releasing singleton mutex");
+            }
+            catch (Exception ex)
+            {
+                Diag("error: " + ex.Message);
+            }
+            finally
+            {
+                try { mutex?.ReleaseMutex(); } catch { }
+                mutex?.Dispose();
+                ready?.Dispose();
+            }
+
+            Diag("=== holder process exiting ===");
+            App.Terminate();
+        }
+
+        private static bool IsAnyRobloxRunning()
+        {
+            foreach (var name in new[] { "RobloxPlayerBeta", "RobloxStudioBeta" })
+            {
+                var procs = Process.GetProcessesByName(name);
+                try { if (procs.Length > 0) return true; }
+                finally { foreach (var p in procs) p.Dispose(); }   // GetProcessesByName leaks handles otherwise
+            }
+            return false;
         }
 
         public static void LaunchBackgroundUpdater()

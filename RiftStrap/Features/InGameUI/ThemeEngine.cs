@@ -94,6 +94,22 @@ namespace RiftStrap.Features.InGameUI
             }
         }
 
+        // true only if 'candidate' resolves to a path strictly inside 'baseDir' (blocks '..'/rooted).
+        private static bool IsInside(string baseDir, string candidate)
+        {
+            try
+            {
+                string baseFull = Path.GetFullPath(baseDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                                  + Path.DirectorySeparatorChar;
+                string full = Path.GetFullPath(candidate);
+                return full.StartsWith(baseFull, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public bool ApplyTheme(string themeId)
         {
             var themeDir = Path.Combine(ThemesDir, themeId);
@@ -115,6 +131,14 @@ namespace RiftStrap.Features.InGameUI
                 {
                     var sourceFile = Path.Combine(themeDir, themePath);
                     var destFile = Path.Combine(Paths.Modifications, contentPath);
+
+                    // reject path traversal ('..' / rooted contentPath): the source must stay inside
+                    // the theme folder and the destination inside Modifications.
+                    if (!IsInside(themeDir, sourceFile) || !IsInside(Paths.Modifications, destFile))
+                    {
+                        App.Logger.WriteLine("ThemeEngine", $"Blocked unsafe theme path: {contentPath}");
+                        continue;
+                    }
 
                     if (!File.Exists(sourceFile))
                         continue;
@@ -151,6 +175,8 @@ namespace RiftStrap.Features.InGameUI
             foreach (var (contentPath, _) in _activeTheme.Files)
             {
                 var filePath = Path.Combine(Paths.Modifications, contentPath);
+                if (!IsInside(Paths.Modifications, filePath))
+                    continue;
                 try
                 {
                     if (File.Exists(filePath))

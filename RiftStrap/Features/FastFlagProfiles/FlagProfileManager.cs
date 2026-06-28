@@ -10,6 +10,14 @@ namespace RiftStrap.Features.FastFlagProfiles
             Directory.CreateDirectory(ProfilesDir);
         }
 
+        // atomic write so a crash mid-write can't truncate a profile file
+        private static void WriteAtomic(string path, string contents)
+        {
+            string tmp = path + ".tmp";
+            File.WriteAllText(tmp, contents);
+            File.Move(tmp, path, true);
+        }
+
         public List<FlagProfile> GetProfiles()
         {
             var profiles = new List<FlagProfile>();
@@ -23,7 +31,10 @@ namespace RiftStrap.Features.FastFlagProfiles
                     if (profile != null)
                         profiles.Add(profile);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteLine("FlagProfiles", $"Skipped unreadable profile '{Path.GetFileName(file)}': {ex.Message}");
+                }
             }
 
             return profiles.OrderBy(p => p.Name).ToList();
@@ -42,7 +53,7 @@ namespace RiftStrap.Features.FastFlagProfiles
             try
             {
                 var json = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(Path.Combine(ProfilesDir, $"{profile.Id}.json"), json);
+                WriteAtomic(Path.Combine(ProfilesDir, $"{profile.Id}.json"), json);
                 App.Logger.WriteLine("FlagProfiles", $"Saved profile: {name} ({profile.Flags.Count} flags)");
             }
             catch (Exception ex)
@@ -125,7 +136,7 @@ namespace RiftStrap.Features.FastFlagProfiles
 
                 profile.Id = Guid.NewGuid().ToString("N")[..8];
                 var outJson = JsonSerializer.Serialize(profile, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(Path.Combine(ProfilesDir, $"{profile.Id}.json"), outJson);
+                WriteAtomic(Path.Combine(ProfilesDir, $"{profile.Id}.json"), outJson);
 
                 return profile;
             }

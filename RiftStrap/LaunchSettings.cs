@@ -16,6 +16,8 @@ namespace RiftStrap
 
         public LaunchFlag WatcherFlag               { get; } = new("watcher");
 
+        public LaunchFlag MutexHolderFlag           { get; } = new("mutexholder");
+
         public LaunchFlag BackgroundUpdaterFlag     { get; } = new("backgroundupdater");
 
         public LaunchFlag QuietFlag                 { get; } = new("quiet");
@@ -43,7 +45,7 @@ namespace RiftStrap
 #if DEBUG
         public bool BypassUpdateCheck => true;
 #else
-        public bool BypassUpdateCheck => UninstallFlag.Active || WatcherFlag.Active;
+        public bool BypassUpdateCheck => UninstallFlag.Active || WatcherFlag.Active || MutexHolderFlag.Active;
 #endif
 
         public LaunchMode RobloxLaunchMode { get; set; } = LaunchMode.None;

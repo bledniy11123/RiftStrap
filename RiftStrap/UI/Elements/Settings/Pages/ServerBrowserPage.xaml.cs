@@ -54,8 +54,9 @@ namespace RiftStrap.UI.Elements.Settings.Pages
                 return;
             }
 
-            ServerList.ItemsSource = result.Data;
-            LoadingText.Text = result.Data.Count == 0 ? "No servers found for this game." : "";
+            var servers = result.Data ?? new();   // a malformed response can leave Data null -> NRE
+            ServerList.ItemsSource = servers;
+            LoadingText.Text = servers.Count == 0 ? "No servers found for this game." : "";
 
             _nextCursor = result.NextPageCursor;
             _prevCursor = result.PreviousPageCursor;

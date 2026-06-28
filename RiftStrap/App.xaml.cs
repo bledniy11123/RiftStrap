@@ -17,10 +17,10 @@ namespace RiftStrap
         public const string ProjectName = "RiftStrap";
 #endif
         public const string ProjectOwner = "n3xt3r";
-        public const string ProjectRepository = "riftstrap/riftstrap";
-        public const string ProjectDownloadLink = "https://github.com/riftstrap/riftstrap";
-        public const string ProjectHelpLink = "https://github.com/riftstrap/riftstrap/wiki";
-        public const string ProjectSupportLink = "https://github.com/riftstrap/riftstrap/issues/new";
+        public const string ProjectRepository = "N3XT3R1337/RiftStrap";
+        public const string ProjectDownloadLink = "https://github.com/N3XT3R1337/RiftStrap";
+        public const string ProjectHelpLink = "https://github.com/N3XT3R1337/RiftStrap/wiki";
+        public const string ProjectSupportLink = "https://github.com/N3XT3R1337/RiftStrap/issues/new";
 
         public const string RobloxPlayerAppName = "RobloxPlayerBeta";
         public const string RobloxStudioAppName = "RobloxStudioBeta";
@@ -188,37 +188,15 @@ namespace RiftStrap
             return null;
         }
 
-        public static async void SendStat(string key, string value)
+        public static void SendStat(string key, string value)
         {
-            if (!Settings.Prop.EnableAnalytics)
-                return;
-
-            try
-            {
-                await HttpClient.GetAsync($"https://{WebUrl}/metrics/post?key={key}&value={value}");
-            }
-            catch (Exception ex)
-            {
-                Logger.WriteException("App::SendStat", ex);
-            }
+            // Telemetry host (services.riftstrap.com) is not provisioned — no-op to avoid per-call
+            // DNS failures spamming the log. Restore the HttpClient call here when a real host exists.
         }
 
-        public static async void SendLog()
+        public static void SendLog()
         {
-            if (!Settings.Prop.EnableAnalytics || !CanSendLogs())
-                return;
-
-            try
-            {
-                await HttpClient.PostAsync(
-                    $"https://{WebUrl}/metrics/post-exception",
-                    new StringContent(Logger.AsDocument)
-                );
-            }
-            catch (Exception ex)
-            {
-                Logger.WriteException("App::SendLog", ex);
-            }
+            // Telemetry host (services.riftstrap.com) is not provisioned — no-op (see SendStat).
         }
 
         public static void AssertWindowsOSVersion()

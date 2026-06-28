@@ -268,12 +268,20 @@ namespace RiftStrap
             {
                 () =>
                 {
-                    foreach (var file in Directory.GetFiles(Paths.Desktop).Where(x => x.EndsWith("lnk")))
+                    foreach (var file in Directory.GetFiles(Paths.Desktop).Where(x => x.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase)))
                     {
-                        var shortcut = ShellLink.Shortcut.ReadFromFile(file);
+                        try
+                        {
+                            var shortcut = ShellLink.Shortcut.ReadFromFile(file);
 
-                        if (shortcut.ExtraData.EnvironmentVariableDataBlock?.TargetUnicode == Paths.Application)
-                            File.Delete(file);
+                            if (shortcut.ExtraData.EnvironmentVariableDataBlock?.TargetUnicode == Paths.Application)
+                                File.Delete(file);
+                        }
+                        catch (Exception ex)
+                        {
+                            // a non-shortcut or unreadable .lnk must not abort cleanup of the rest
+                            App.Logger.WriteLine("Installer::DoUninstall", $"Skipped shortcut '{file}': {ex.Message}");
+                        }
                     }
                 },
 
@@ -325,7 +333,7 @@ namespace RiftStrap
                 string deleteCommand;
 
                 if (deleteFolder)
-                    deleteCommand = $"del /Q \"{Paths.Base}\\*\" && rmdir \"{Paths.Base}\"";
+                    deleteCommand = $"rmdir /S /Q \"{Paths.Base}\"";   // /S so kept subfolders don't block removal
                 else
                     deleteCommand = $"del /Q \"{Paths.Application}\"";
 
@@ -387,13 +395,13 @@ namespace RiftStrap
 
             Filesystem.AssertReadOnly(Paths.Application);
 
-            using (var ipl = new InterProcessLock("AutoUpdater", TimeSpan.FromSeconds(5)))
+            // hold the lock for the WHOLE upgrade (the original closed the using-block here, releasing
+            // the mutex before the File.Copy it is meant to guard -> two updaters could race the copy).
+            using var ipl = new InterProcessLock("AutoUpdater", TimeSpan.FromSeconds(5));
+            if (!ipl.IsAcquired)
             {
-                if (!ipl.IsAcquired)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not obtain singleton mutex)");
-                    return;
-                }
+                App.Logger.WriteLine(LOG_IDENT, "Failed to update! (Could not obtain singleton mutex)");
+                return;
             }
 
             for (int i = 1; i <= 10; i++)

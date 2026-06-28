@@ -21,6 +21,14 @@ namespace RiftStrap.Features.CommunityHub
 
         public async Task<HubCatalog?> FetchCatalogAsync()
         {
+            // The default themes catalog repo does not exist yet (404). Skip the failing request and
+            // fall back to any cached catalog; callers already tolerate a null/empty catalog.
+            if (string.IsNullOrEmpty(CatalogUrl) || CatalogUrl.Contains("riftstrap/riftstrap-themes"))
+            {
+                App.Logger.WriteLine("HubService", "Themes catalog URL not configured; using cache");
+                return LoadCachedCatalog();
+            }
+
             try
             {
                 var json = await App.HttpClient.GetStringAsync(CatalogUrl);

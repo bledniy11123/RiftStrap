@@ -12,6 +12,7 @@ namespace RiftStrap.Features.PerformanceDashboard
         private readonly object _lock = new();
         private CancellationTokenSource? _cts;
         private Process? _robloxProcess;
+        private bool _ownsProcess;
         private DateTime _lastCpuTime;
         private TimeSpan _lastTotalProcessorTime;
         private double _logFps;
@@ -42,7 +43,11 @@ namespace RiftStrap.Features.PerformanceDashboard
         {
             Stop();
 
-            _robloxProcess = process ?? FindRobloxProcess();
+            lock (_lock)
+            {
+                _robloxProcess = process ?? FindRobloxProcess();
+                _ownsProcess = process == null;   // only dispose a process we found ourselves, not a caller's
+            }
             if (_robloxProcess == null)
             {
                 App.Logger.WriteLine("PerformanceMonitor", "No Roblox process found");
@@ -63,6 +68,14 @@ namespace RiftStrap.Features.PerformanceDashboard
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
+
+            lock (_lock)
+            {
+                if (_ownsProcess)
+                    _robloxProcess?.Dispose();
+                _robloxProcess = null;
+                _ownsProcess = false;
+            }
         }
 
         public void Dispose()
@@ -160,7 +173,12 @@ namespace RiftStrap.Features.PerformanceDashboard
         {
             try
             {
-                return Process.GetProcessesByName("RobloxPlayerBeta").FirstOrDefault();
+                var procs = Process.GetProcessesByName("RobloxPlayerBeta");
+                var first = procs.FirstOrDefault();
+                foreach (var p in procs)        // dispose the handles we are not keeping
+                    if (!ReferenceEquals(p, first))
+                        p.Dispose();
+                return first;
             }
             catch
             {

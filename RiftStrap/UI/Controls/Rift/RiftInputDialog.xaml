@@ -5,6 +5,11 @@
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Width="420" Height="220" ShowInTaskbar="False">
 
+    <Window.Resources>
+        <DropShadowEffect x:Key="DialogShadow" BlurRadius="24" ShadowDepth="4"
+                          Direction="270" Color="#000000" Opacity="0.6" />
+    </Window.Resources>
+
     <Border Background="#0F0F0F" CornerRadius="12" BorderBrush="#1A1A1A" BorderThickness="1"
             Margin="16" Effect="{StaticResource DialogShadow}">
 
@@ -50,9 +55,4 @@
             </StackPanel>
         </Grid>
     </Border>
-
-    <Window.Resources>
-        <DropShadowEffect x:Key="DialogShadow" BlurRadius="24" ShadowDepth="4"
-                          Direction="270" Color="#000000" Opacity="0.6" />
-    </Window.Resources>
 </Window>

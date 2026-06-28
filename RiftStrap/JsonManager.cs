@@ -110,7 +110,10 @@ namespace RiftStrap
             {
                 string contents = JsonSerializer.Serialize(Prop, new JsonSerializerOptions { WriteIndented = true });
 
-                File.WriteAllText(FileLocation, contents);
+                // atomic write: a crash mid-write must not leave a truncated/corrupt settings file
+                string tmp = FileLocation + ".tmp";
+                File.WriteAllText(tmp, contents);
+                File.Move(tmp, FileLocation, true);
 
                 LastFileHash = MD5Hash.FromString(contents);
             }

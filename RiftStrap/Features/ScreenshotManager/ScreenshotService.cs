@@ -58,17 +58,28 @@ namespace RiftStrap.Features.ScreenshotManager
             if (!Directory.Exists(RobloxScreenshotsDir))
                 return;
 
+            _watcher?.Dispose();   // don't leak a previously-armed watcher if StartWatching runs again
+
             _watcher = new FileSystemWatcher(RobloxScreenshotsDir)
             {
-                Filter = "*.png",
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime,
                 EnableRaisingEvents = true,
             };
 
             _watcher.Created += (_, e) =>
             {
-                OnNewScreenshot?.Invoke(e.FullPath);
-                App.Logger.WriteLine("Screenshots", $"New screenshot: {e.Name}");
+                try
+                {
+                    var ext = Path.GetExtension(e.FullPath);
+                    if (!ext.Equals(".png", StringComparison.OrdinalIgnoreCase)
+                        && !ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                        && !ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+                        return;
+
+                    OnNewScreenshot?.Invoke(e.FullPath);
+                    App.Logger.WriteLine("Screenshots", $"New screenshot: {e.Name}");
+                }
+                catch { }
             };
         }
 

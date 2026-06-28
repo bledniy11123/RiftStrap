@@ -80,8 +80,9 @@ namespace RiftStrap
                     ActivityWatcher.OnAppClose += delegate
                     {
                         App.Logger.WriteLine(LOG_IDENT, "Received desktop app exit, closing Roblox");
-                        using var process = Process.GetProcessById(_watcherData.ProcessId);
-                        process.CloseMainWindow();
+                        // CloseProcess swallows the case where the client has already exited;
+                        // Process.GetProcessById would throw ArgumentException out of this handler.
+                        CloseProcess(_watcherData.ProcessId);
                     };
                 }
 
@@ -210,7 +211,7 @@ namespace RiftStrap
 
             ActivityWatcher?.Start();
 
-            while (Utilities.GetProcessesSafe().Any(x => x.Id == _watcherData.ProcessId))
+            while (Utilities.IsProcessRunning(_watcherData.ProcessId))
                 await Task.Delay(1000);
 
             if (_watcherData.AutoclosePids is not null)
@@ -232,8 +233,10 @@ namespace RiftStrap
             _memoryCleaner.Dispose();
             _timeLimiter.Dispose();
             _pluginHost.Dispose();
+            _screenshotService.Dispose();
             _notifyIcon?.Dispose();
             RichPresence?.Dispose();
+            _lock.Dispose();
 
             GC.SuppressFinalize(this);
         }

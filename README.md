@@ -8,7 +8,7 @@ An open-source Roblox launcher. Fork of [Bloxstrap](https://github.com/bloxstrap
 
 **Multi-Instance** -- Run multiple Roblox clients simultaneously.
 
-**FPS Unlocker** -- Remove the 60 FPS cap without external tools.
+**FPS Cap** -- Set or remove Roblox's FPS cap from the launcher, no external tools needed.
 
 **FastFlag Profiles** -- Save, load, and swap named FastFlag presets. Import/export as JSON.
 
@@ -31,12 +31,25 @@ An open-source Roblox launcher. Fork of [Bloxstrap](https://github.com/bloxstrap
 Requires .NET 8 SDK and Windows 10 or later.
 
 ```
-git clone --recurse-submodules https://github.com/n3xt3r/riftstrap
-cd riftstrap
+git clone --recurse-submodules https://github.com/N3XT3R1337/RiftStrap
+cd RiftStrap
 dotnet build RiftStrap.sln -c Release
 ```
 
-Output: `RiftStrap/bin/Release/net8.0-windows/RiftStrap.exe`
+Output: `RiftStrap/bin/Release/net8.0-windows/RiftStrap.exe` (framework-dependent — for development only).
+
+## Publishing a release (self-contained single exe)
+
+The installer copies a single executable into the install folder, so a release build must be a
+self-contained single-file publish (otherwise the installed copy is missing its dependencies and
+will not start):
+
+```
+dotnet publish RiftStrap/RiftStrap.csproj -c Release -r win-x64 -p:PublishSingleFile=true --self-contained true
+```
+
+Output: `RiftStrap/bin/Release/net8.0-windows/win-x64/publish/RiftStrap.exe` — this is the exe to
+distribute and install; it embeds the .NET runtime and all dependencies.
 
 ---
 

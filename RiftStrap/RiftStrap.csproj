@@ -7,15 +7,24 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>True</UseWindowsForms>
     <ApplicationIcon>RiftStrap.ico</ApplicationIcon>
-    <Version>0.1.0</Version>
-    <FileVersion>0.1.0</FileVersion>
+    <Version>1.0.2</Version>
+    <FileVersion>1.0.2</FileVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <PublishTrimmed>false</PublishTrimmed>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
-    
+
+  <!-- Single-file self-contained settings, applied ONLY at publish time so a plain build stays
+       fast and framework-dependent for development. See README for the publish command. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <Resource Include="RiftStrap.ico" />
     <Resource Include="Resources\RiftLogo.png" />
