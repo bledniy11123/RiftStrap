@@ -85,7 +85,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Auto-Rejoin" FontSize="13" Foreground="#FAFAFA" />
-                    <TextBlock Text="Automatically rejoin the game after an unexpected disconnect (requires Activity Tracking)" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                    <TextBlock Text="Automatically rejoin the game after an unexpected disconnect (requires Activity Tracking). Don't enable alongside RIFT's relauncher — they can conflict." FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
                 </StackPanel>
                 <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoRejoinEnabled, Mode=TwoWay}" VerticalAlignment="Center" />
             </Grid>
