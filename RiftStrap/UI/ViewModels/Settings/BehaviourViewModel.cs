@@ -51,6 +51,12 @@ namespace RiftStrap.UI.ViewModels.Settings
             set => App.Settings.Prop.ConfirmLaunches = value;
         }
 
+        public bool AutoRejoinEnabled
+        {
+            get => App.Settings.Prop.AutoRejoinEnabled;
+            set { App.Settings.Prop.AutoRejoinEnabled = value; OnPropertyChanged(nameof(AutoRejoinEnabled)); }
+        }
+
         public bool BackgroundUpdates
         {
             get => App.Settings.Prop.BackgroundUpdatesEnabled;

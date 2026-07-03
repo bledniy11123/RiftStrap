@@ -82,13 +82,27 @@ namespace RiftStrap.Features.ThemeCreator
         {
             if (!File.Exists(replacementFilePath)) return;
 
-            var workFile = Path.Combine(WorkDir, Path.GetFileName(replacementFilePath));
+            // Key the working/exported file by the CONTENT path, not the source file's bare
+            // name. Otherwise two different assets replaced with distinct local files that
+            // happen to share a basename (e.g. C:\a\icon.png and C:\b\icon.png) would both
+            // collapse onto files/icon.png, silently corrupting the exported theme.
+            var uniqueName = StableFileName(contentRelativePath, replacementFilePath);
+
+            var workFile = Path.Combine(WorkDir, uniqueName);
             File.Copy(replacementFilePath, workFile, true);
 
             _replacements[contentRelativePath] = workFile;
+            _workingTheme.Files[contentRelativePath] = $"files/{uniqueName}";
+        }
 
-            var themeFileName = $"files/{Path.GetFileName(replacementFilePath)}";
-            _workingTheme.Files[contentRelativePath] = themeFileName;
+        private static string StableFileName(string contentRelativePath, string replacementFilePath)
+        {
+            var hash = Convert.ToHexString(
+                System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(contentRelativePath)))[..8]
+                .ToLowerInvariant();
+            var baseName = string.Concat(Path.GetFileName(replacementFilePath).Split(Path.GetInvalidFileNameChars()));
+            if (string.IsNullOrWhiteSpace(baseName)) baseName = "file";
+            return $"{hash}_{baseName}";
         }
 
         public void RemoveReplacement(string contentRelativePath)

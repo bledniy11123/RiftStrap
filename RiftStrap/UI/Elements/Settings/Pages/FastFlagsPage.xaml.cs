@@ -42,6 +42,10 @@ namespace RiftStrap.UI.Elements.Settings.Pages
             var sb = (Storyboard)FindResource("SectionEntrance");
             sb.Begin(this, true);
 
+            // Populate the profile dropdown every time the page opens, otherwise the
+            // Load/Delete buttons stay dead until the user saves a new profile in-session.
+            RefreshProfiles();
+
             if (!_initialLoad)
             {
                 _initialLoad = true;

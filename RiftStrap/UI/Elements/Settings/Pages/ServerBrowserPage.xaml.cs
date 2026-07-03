@@ -114,7 +114,13 @@ namespace RiftStrap.UI.Elements.Settings.Pages
 
         private void ServerCard_Click(object sender, MouseButtonEventArgs e)
         {
-
+            // The row shows a Hand cursor implying it's clickable; join the row's server,
+            // matching the row-click-to-launch behaviour on the QuickLaunch/Screenshots pages.
+            if (sender is FrameworkElement { DataContext: ServerInfo server } && !string.IsNullOrEmpty(server.Id))
+            {
+                var url = ServerBrowserService.BuildJoinUrl(_currentPlaceId, server.Id);
+                Utilities.ShellExecute(url);
+            }
         }
     }
 }

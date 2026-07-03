@@ -76,5 +76,15 @@ namespace RiftStrap.UI.Elements.Settings.Pages
         {
             _manager.AutoDetectEnabled = AutoDetectToggle.IsChecked == true;
         }
+
+        private void ProfileEnabled_Changed(object sender, RoutedEventArgs e)
+        {
+            // Persist the per-profile Enabled flip. The two-way binding only mutates the
+            // in-memory GameProfile; without this the change is never written to
+            // GameProfiles.json and is lost on the next launch (the watcher process reloads
+            // from disk and re-applies the profile).
+            if (sender is FrameworkElement { DataContext: GameProfile profile })
+                _manager.SetProfile(profile);
+        }
     }
 }

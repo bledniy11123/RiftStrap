@@ -84,7 +84,18 @@ namespace RiftStrap.Features.TexturePacks
                     }
                 }
 
-                var packDir = System.IO.Path.Combine(PacksDir, pack.Id);
+                // A manifest with a missing/empty "id" leaves pack.Id == "". Fall back to the
+                // zip name, then resolve+validate so the dir can never equal or escape PacksDir.
+                if (string.IsNullOrWhiteSpace(pack.Id))
+                    pack.Id = System.IO.Path.GetFileNameWithoutExtension(zipPath);
+
+                if (!TryResolvePackDir(pack.Id, out var safeId, out var packDir))
+                {
+                    App.Logger.WriteLine("TexturePacks", "Install aborted: invalid pack id");
+                    return null;
+                }
+                pack.Id = safeId;
+
                 if (Directory.Exists(packDir))
                     Directory.Delete(packDir, true);
 
@@ -119,7 +130,13 @@ namespace RiftStrap.Features.TexturePacks
                     Author = "Local",
                 };
 
-                var packDir = System.IO.Path.Combine(PacksDir, pack.Id);
+                if (!TryResolvePackDir(pack.Id, out var safeId, out var packDir))
+                {
+                    App.Logger.WriteLine("TexturePacks", "Folder install aborted: invalid pack id");
+                    return null;
+                }
+                pack.Id = safeId;
+
                 if (Directory.Exists(packDir))
                     Directory.Delete(packDir, true);
 
@@ -141,7 +158,7 @@ namespace RiftStrap.Features.TexturePacks
 
         public bool Apply(string packId)
         {
-            var packDir = System.IO.Path.Combine(PacksDir, packId);
+            if (!TryResolvePackDir(packId, out _, out var packDir)) return false;
             if (!Directory.Exists(packDir)) return false;
 
             try
@@ -214,9 +231,30 @@ namespace RiftStrap.Features.TexturePacks
             if (_activePack?.Id == packId)
                 RemoveActive();
 
-            var packDir = System.IO.Path.Combine(PacksDir, packId);
+            if (!TryResolvePackDir(packId, out _, out var packDir)) return;
             if (Directory.Exists(packDir))
                 Directory.Delete(packDir, true);
+        }
+
+        /// <summary>
+        /// Resolves a pack id to its directory under PacksDir, sanitising invalid/empty ids.
+        /// Returns false (instead of a dir equal to or outside PacksDir) so callers can never
+        /// Directory.Delete the whole TexturePacks folder via an empty/traversing id.
+        /// </summary>
+        private static bool TryResolvePackDir(string? id, out string safeId, out string packDir)
+        {
+            safeId = string.Concat((id ?? "").Split(System.IO.Path.GetInvalidFileNameChars())).Trim();
+            packDir = "";
+            if (string.IsNullOrWhiteSpace(safeId)) return false;
+
+            var candidate = System.IO.Path.Combine(PacksDir, safeId);
+            var full = System.IO.Path.GetFullPath(candidate).TrimEnd('\\', '/');
+            var root = System.IO.Path.GetFullPath(PacksDir).TrimEnd('\\', '/');
+            if (!full.StartsWith(root + System.IO.Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            packDir = candidate;
+            return true;
         }
 
         private void LoadActive()

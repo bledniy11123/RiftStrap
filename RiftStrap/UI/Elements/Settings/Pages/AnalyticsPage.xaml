@@ -90,7 +90,13 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding DayLabel}" FontSize="11" Foreground="#444444" VerticalAlignment="Center" />
                             <Border Grid.Column="1" CornerRadius="3" Background="#08FFFFFF" Margin="0,2">
-                                <Border CornerRadius="3" Background="#1AFFFFFF" HorizontalAlignment="Left" MinWidth="2" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="{Binding BarFillStar}" />
+                                        <ColumnDefinition Width="{Binding BarRestStar}" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" CornerRadius="3" Background="#1AFFFFFF" MinWidth="2" />
+                                </Grid>
                             </Border>
                             <TextBlock Grid.Column="2" Text="{Binding HoursText}" FontSize="11" Foreground="#666666" HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="{DynamicResource RiftFontMono}" />
                         </Grid>

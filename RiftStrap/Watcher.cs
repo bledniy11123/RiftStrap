@@ -75,6 +75,12 @@ namespace RiftStrap
             {
                 ActivityWatcher = new(_watcherData.LogFile);
 
+                // Wire the auto-rejoin service from settings — it was previously never enabled,
+                // so HandleDisconnectAsync always returned at its first guard and the feature
+                // could never fire for anyone.
+                _autoRejoin.Enabled = App.Settings.Prop.AutoRejoinEnabled;
+                _autoRejoin.RejoinOnKick = App.Settings.Prop.AutoRejoinOnKick;
+
                 if (App.Settings.Prop.UseDisableAppPatch)
                 {
                     ActivityWatcher.OnAppClose += delegate

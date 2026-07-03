@@ -67,12 +67,13 @@ namespace RiftStrap.Features.InGameUI
                     App.Logger.WriteLine("DefaultModApplier", "Cleaned up CoreScript mods");
                 }
 
-                var cursorDir = Path.Combine(Paths.Modifications, "content", "textures", "Cursors", "KeyboardMouse");
-                if (Directory.Exists(cursorDir))
-                {
-                    Directory.Delete(cursorDir, true);
-                    App.Logger.WriteLine("DefaultModApplier", "Cleaned up generated cursors from Modifications");
-                }
+                // NOTE: previously this deleted the whole Modifications KeyboardMouse cursor
+                // folder every launch. But nothing generates placeholder cursors there
+                // (EnsureDefaultCursors is never called) — that folder is only ever populated
+                // intentionally by an active theme (ThemeEngine.ApplyTheme) or the Mods
+                // "old cursor" preset. Blanket-deleting it wiped those before they reached the
+                // game, so applied cursor themes/mods never took effect. Theme/mod removal is
+                // handled by ThemeEngine.RemoveActiveTheme and the mod undo, so no cleanup here.
 
                 if (Directory.Exists(Paths.Versions))
                 {
