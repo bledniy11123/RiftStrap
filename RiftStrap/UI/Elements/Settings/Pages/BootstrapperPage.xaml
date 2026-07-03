@@ -77,6 +77,21 @@
 
             <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
 
+            <!-- Row: Auto-Rejoin -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Auto-Rejoin" FontSize="13" Foreground="#FAFAFA" />
+                    <TextBlock Text="Automatically rejoin the game after an unexpected disconnect (requires Activity Tracking)" FontSize="11" Foreground="#444444" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoRejoinEnabled, Mode=TwoWay}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Height="1" Background="#08FFFFFF" Margin="0,12,0,12" />
+
             <!-- Row: Confirm Launches -->
             <Grid>
                 <Grid.ColumnDefinitions>

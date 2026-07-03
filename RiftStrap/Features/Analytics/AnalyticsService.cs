@@ -81,6 +81,11 @@ namespace RiftStrap.Features.Analytics
                     .Sum(s => s.DurationMinutes);
                 result.Add(new DailyPlayTime { Date = date, Minutes = minutes });
             }
+
+            var max = result.Count > 0 ? result.Max(d => d.Minutes) : 0;
+            foreach (var d in result)
+                d.MaxMinutes = max;
+
             return result;
         }
 
@@ -180,5 +185,13 @@ namespace RiftStrap.Features.Analytics
         public double Minutes { get; set; }
         public string DayLabel => Date.ToString("ddd");
         public string HoursText => $"{Minutes / 60:F1}h";
+
+        // Set by GetDailyBreakdown so each bar sizes relative to the busiest day. The chart
+        // uses two star-weighted columns (fill + remainder) so the bar length is proportional.
+        public double MaxMinutes { get; set; }
+        public System.Windows.GridLength BarFillStar =>
+            new(MaxMinutes > 0 ? Minutes / MaxMinutes : 0, System.Windows.GridUnitType.Star);
+        public System.Windows.GridLength BarRestStar =>
+            new(MaxMinutes > 0 ? Math.Max(1 - Minutes / MaxMinutes, 0) : 1, System.Windows.GridUnitType.Star);
     }
 }

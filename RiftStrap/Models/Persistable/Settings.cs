@@ -32,6 +32,10 @@ namespace RiftStrap.Models.Persistable
         public bool AllowVersionDowngrade { get; set; } = false;
 
         public bool EnableActivityTracking { get; set; } = true;
+
+        public bool AutoRejoinEnabled { get; set; } = false;
+        public bool AutoRejoinOnKick { get; set; } = false;
+
         public bool UseDiscordRichPresence { get; set; } = true;
         public bool HideRPCButtons { get; set; } = true;
         public bool ShowAccountOnRichPresence { get; set; } = false;

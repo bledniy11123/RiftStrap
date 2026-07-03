@@ -120,7 +120,7 @@
                                     <TextBlock Text="{Binding FileName}" FontSize="12" Foreground="#FAFAFA" FontFamily="Consolas, Cascadia Mono, monospace" />
                                     <TextBlock Text="{Binding RelativePath}" FontSize="9" Foreground="#333333" TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
                                 </StackPanel>
-                                <rift:RiftButton Grid.Column="1" Content="{Binding IsReplaced, Converter={x:Null}}"
+                                <rift:RiftButton Grid.Column="1" Content="{Binding IsReplaced, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Replaced|Replace'}"
                                                  Variant="Secondary" Padding="10,5" FontSize="11"
                                                  Click="ReplaceFile_Click" Tag="{Binding RelativePath}" VerticalAlignment="Center" />
                             </Grid>

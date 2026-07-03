@@ -172,6 +172,12 @@ namespace RiftStrap.UI.Elements.Settings
             _state.Left = this.Left;
 
             App.State.Save();
+
+            // Persist standard settings toggles on close too. The Save button is the only
+            // other path that calls App.Settings.Save(), so flipping a normal switch (e.g.
+            // Multi-Instance) and closing via the X used to silently discard it.
+            if (!e.Cancel)
+                App.Settings.Save();
         }
 
         private void WpfUiWindow_Closed(object sender, EventArgs e)
