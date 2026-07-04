@@ -24,7 +24,7 @@ namespace RiftStrap.RobloxInterfaces
             if (_initialised)
                 return;
 
-            await semaphoreSlim.WaitAsync();
+            await semaphoreSlim.WaitAsync().ConfigureAwait(false);
             try
             {
                 if (_initialised)
@@ -41,17 +41,17 @@ namespace RiftStrap.RobloxInterfaces
 
                 try
                 {
-                    response = await App.HttpClient.GetAsync("https://clientsettingscdn.roblox.com" + path);
+                    response = await App.HttpClient.GetAsync("https://clientsettingscdn.roblox.com" + path).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
                     App.Logger.WriteLine(logIndent, "Failed to contact clientsettingscdn! Falling back to clientsettings...");
                     App.Logger.WriteException(logIndent, ex);
 
-                    response = await App.HttpClient.GetAsync("https://clientsettings.roblox.com" + path);
+                    response = await App.HttpClient.GetAsync("https://clientsettings.roblox.com" + path).ConfigureAwait(false);
                 }
 
-                string rawResponse = await response.Content.ReadAsStringAsync();
+                string rawResponse = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
                 response.EnsureSuccessStatusCode();
 
@@ -74,7 +74,7 @@ namespace RiftStrap.RobloxInterfaces
 
         public async Task<T?> GetAsync<T>(string name)
         {
-            await Fetch();
+            await Fetch().ConfigureAwait(false);
 
             if (!_flags!.ContainsKey(name))
                 return default;
@@ -87,9 +87,9 @@ namespace RiftStrap.RobloxInterfaces
                 if (converter == null)
                     return default;
 
-                return (T?)converter.ConvertFromString(value);
+                return (T?)converter.ConvertFromInvariantString(value);
             }
-            catch (NotSupportedException)
+            catch (Exception)
             {
                 return default;
             }
@@ -97,7 +97,7 @@ namespace RiftStrap.RobloxInterfaces
 
         public T? Get<T>(string name)
         {
-            return GetAsync<T>(name).Result;
+            return Task.Run(() => GetAsync<T>(name)).GetAwaiter().GetResult();
         }
 
         private static Dictionary<string, Dictionary<string, ApplicationSettings>> _cache = new();

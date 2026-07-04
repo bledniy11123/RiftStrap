@@ -24,11 +24,16 @@ namespace RiftStrap.Features.QuickLaunch
 
                 foreach (var game in games.EnumerateArray())
                 {
+                    if (!game.TryGetProperty("universeId", out var universeId) ||
+                        !game.TryGetProperty("placeId", out var placeId) ||
+                        !game.TryGetProperty("name", out var name))
+                        continue;
+
                     results.Add(new SearchResult
                     {
-                        UniverseId = game.GetProperty("universeId").GetInt64(),
-                        PlaceId = game.GetProperty("placeId").GetInt64(),
-                        Name = game.GetProperty("name").GetString() ?? "",
+                        UniverseId = universeId.GetInt64(),
+                        PlaceId = placeId.GetInt64(),
+                        Name = name.GetString() ?? "",
                         CreatorName = game.TryGetProperty("creatorName", out var cn) ? cn.GetString() ?? "" : "",
                         Playing = game.TryGetProperty("playerCount", out var pc) ? pc.GetInt32() : 0,
                         TotalUpVotes = game.TryGetProperty("totalUpVotes", out var uv) ? uv.GetInt64() : 0,
@@ -109,14 +114,31 @@ namespace RiftStrap.Features.QuickLaunch
             {
                 _data = JsonSerializer.Deserialize<QuickLaunchData>(File.ReadAllText(DataFile)) ?? new();
             }
-            catch { _data = new(); }
+            catch
+            {
+                try
+                {
+                    var backup = DataFile + ".bak";
+                    if (File.Exists(backup))
+                        _data = JsonSerializer.Deserialize<QuickLaunchData>(File.ReadAllText(backup)) ?? new();
+                    else
+                        _data = new();
+                }
+                catch { _data = new(); }
+            }
         }
 
         private void Save()
         {
             try
             {
-                File.WriteAllText(DataFile, JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true }));
+                var tmp = DataFile + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(_data, new JsonSerializerOptions { WriteIndented = true }));
+
+                if (File.Exists(DataFile))
+                    File.Replace(tmp, DataFile, DataFile + ".bak");
+                else
+                    File.Move(tmp, DataFile);
             }
             catch (Exception ex)
             {
@@ -166,7 +188,9 @@ namespace RiftStrap.Features.QuickLaunch
         public long TotalDownVotes { get; set; }
         public string? ThumbnailUrl { get; set; }
 
-        public string PlayingText => Playing > 1000 ? $"{Playing / 1000.0:F1}k" : Playing.ToString();
+        public string PlayingText => Playing > 1000
+            ? (Playing / 1000.0).ToString("F1", CultureInfo.InvariantCulture) + "k"
+            : Playing.ToString(CultureInfo.InvariantCulture);
         public double LikePercent => TotalUpVotes + TotalDownVotes > 0
             ? (double)TotalUpVotes / (TotalUpVotes + TotalDownVotes) * 100 : 0;
     }

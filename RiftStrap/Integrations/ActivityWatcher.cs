@@ -40,7 +40,19 @@ namespace RiftStrap.Integrations
 
         public ActivityData Data { get; private set; } = new();
 
-        public List<ActivityData> History = new();
+        private readonly object _historyLock = new();
+        private readonly List<ActivityData> _history = new();
+
+        // Returns a snapshot copied under the history lock so consumers never
+        // enumerate the live list while the watcher mutates it on its own thread.
+        public List<ActivityData> History
+        {
+            get
+            {
+                lock (_historyLock)
+                    return new List<ActivityData>(_history);
+            }
+        }
 
         public bool IsDisposed = false;
 
@@ -50,7 +62,7 @@ namespace RiftStrap.Integrations
                 LogLocation = logFile;
         }
 
-        public async void Start()
+        public async Task Start()
         {
             const string LOG_IDENT = "ActivityWatcher::Start";
 
@@ -96,7 +108,7 @@ namespace RiftStrap.Integrations
                 logFileInfo = new FileInfo(LogLocation);
             }
 
-            OnLogOpen?.Invoke(this, EventArgs.Empty);
+            RaiseEvent(OnLogOpen);
 
             FileStream logFileStream;
             try
@@ -115,12 +127,22 @@ namespace RiftStrap.Integrations
 
             while (!IsDisposed)
             {
-                string? log = await streamReader.ReadLineAsync();
+                try
+                {
+                    string? log = await streamReader.ReadLineAsync();
 
-                if (log is null)
+                    if (log is null)
+                        await Task.Delay(1000);
+                    else
+                        ReadLogEntry(log);
+                }
+                catch (Exception ex)
+                {
+                    // Never let a single bad line or throwing subscriber tear down the watcher.
+                    App.Logger.WriteLine(LOG_IDENT, "Unhandled exception while processing log entry, continuing...");
+                    App.Logger.WriteException(LOG_IDENT, ex);
                     await Task.Delay(1000);
-                else
-                    ReadLogEntry(log);
+                }
             }
         }
 
@@ -128,7 +150,7 @@ namespace RiftStrap.Integrations
         {
             const string LOG_IDENT = "ActivityWatcher::ReadLogEntry";
 
-            OnLogEntry?.Invoke(this, entry);
+            RaiseEvent(OnLogEntry, entry);
 
             _logEntriesRead += 1;
 
@@ -150,7 +172,7 @@ namespace RiftStrap.Integrations
             {
                 App.Logger.WriteLine(LOG_IDENT, "User is back into the desktop app");
 
-                OnAppClose?.Invoke(this, EventArgs.Empty);
+                RaiseEvent(OnAppClose);
 
                 if (Data.PlaceId != 0 && !InGame)
                 {
@@ -191,8 +213,15 @@ namespace RiftStrap.Integrations
                         return;
                     }
 
+                    if (!long.TryParse(match.Groups[2].Value, out long placeId))
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, "Failed to parse place id for game join entry");
+                        App.Logger.WriteLine(LOG_IDENT, logMessage);
+                        return;
+                    }
+
                     InGame = false;
-                    Data.PlaceId = long.Parse(match.Groups[2].Value);
+                    Data.PlaceId = placeId;
                     Data.JobId = match.Groups[1].Value;
                     Data.MachineAddress = match.Groups[3].Value;
 
@@ -228,13 +257,22 @@ namespace RiftStrap.Integrations
                         return;
                     }
 
-                    Data.UniverseId = Int64.Parse(match.Groups[1].Value);
-                    Data.UserId = Int64.Parse(match.Groups[2].Value);
-
-                    if (History.Any())
+                    if (!Int64.TryParse(match.Groups[1].Value, out long universeId) || !Int64.TryParse(match.Groups[2].Value, out long userId))
                     {
-                        var lastActivity = History.First();
+                        App.Logger.WriteLine(LOG_IDENT, "Failed to parse universe/user id for game join universe entry");
+                        App.Logger.WriteLine(LOG_IDENT, logMessage);
+                        return;
+                    }
 
+                    Data.UniverseId = universeId;
+                    Data.UserId = userId;
+
+                    ActivityData? lastActivity;
+                    lock (_historyLock)
+                        lastActivity = _history.FirstOrDefault();
+
+                    if (lastActivity is not null)
+                    {
                         if (Data.UniverseId == lastActivity.UniverseId && Data.IsTeleport)
                             Data.RootActivity = lastActivity.RootActivity ?? lastActivity;
                     }
@@ -252,7 +290,7 @@ namespace RiftStrap.Integrations
 
                     Data.MachineAddress = match.Groups[1].Value;
 
-                    if (App.Settings.Prop.ShowServerDetails)
+                    if (App.Settings.Prop.ShowServerDetails && Data.MachineAddressValid)
                         _ = Data.QueryServerLocation();
 
                     App.Logger.WriteLine(LOG_IDENT, $"Server is UDMUX protected ({Data})");
@@ -273,7 +311,7 @@ namespace RiftStrap.Integrations
                     InGame = true;
                     Data.TimeJoined = DateTime.Now;
 
-                    OnGameJoin?.Invoke(this, EventArgs.Empty);
+                    RaiseEvent(OnGameJoin);
                 }
             }
             else if (InGame && Data.PlaceId != 0)
@@ -284,12 +322,13 @@ namespace RiftStrap.Integrations
                     App.Logger.WriteLine(LOG_IDENT, $"Disconnected from Game ({Data})");
 
                     Data.TimeLeft = DateTime.Now;
-                    History.Insert(0, Data);
+                    lock (_historyLock)
+                        _history.Insert(0, Data);
 
                     InGame = false;
                     Data = new();
 
-                    OnGameLeave?.Invoke(this, EventArgs.Empty);
+                    RaiseEvent(OnGameLeave);
                 }
                 else if (logMessage.StartsWith(GameTeleportingEntry))
                 {
@@ -374,9 +413,51 @@ namespace RiftStrap.Integrations
                         Data.RPCLaunchData = data;
                     }
 
-                    OnRPCMessage?.Invoke(this, message);
+                    RaiseEvent(OnRPCMessage, message);
 
                     LastRPCRequest = DateTime.Now;
+                }
+            }
+        }
+
+        // Invoke each subscriber in isolation so one throwing handler cannot prevent
+        // the others from running or tear down the watcher loop.
+        private void RaiseEvent(EventHandler? handler)
+        {
+            const string LOG_IDENT = "ActivityWatcher::RaiseEvent";
+
+            if (handler is null)
+                return;
+
+            foreach (var subscriber in handler.GetInvocationList())
+            {
+                try
+                {
+                    ((EventHandler)subscriber)(this, EventArgs.Empty);
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException(LOG_IDENT, ex);
+                }
+            }
+        }
+
+        private void RaiseEvent<T>(EventHandler<T>? handler, T args)
+        {
+            const string LOG_IDENT = "ActivityWatcher::RaiseEvent";
+
+            if (handler is null)
+                return;
+
+            foreach (var subscriber in handler.GetInvocationList())
+            {
+                try
+                {
+                    ((EventHandler<T>)subscriber)(this, args);
+                }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException(LOG_IDENT, ex);
                 }
             }
         }

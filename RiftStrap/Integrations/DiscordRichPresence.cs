@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Windows;
 using RiftStrap.Models.RobloxApi;
 using DiscordRPC;
@@ -9,7 +10,8 @@ namespace RiftStrap.Integrations
 
         private readonly DiscordRpcClient _rpcClient = new("1005469189907173486");
         private readonly ActivityWatcher _activityWatcher;
-        private readonly Queue<Message> _messageQueue = new();
+        private readonly ConcurrentQueue<Message> _messageQueue = new();
+        private readonly object _presenceLock = new();
 
         private DiscordRPC.RichPresence? _currentPresence;
         private DiscordRPC.RichPresence? _originalPresence;
@@ -28,8 +30,30 @@ namespace RiftStrap.Integrations
 
             _activityWatcher = activityWatcher;
 
-            _activityWatcher.OnGameJoin += (_, _) => Task.Run(() => SetCurrentGame());
-            _activityWatcher.OnGameLeave += (_, _) => Task.Run(() => SetCurrentGame());
+            _activityWatcher.OnGameJoin += (_, _) => Task.Run(async () =>
+            {
+                try
+                {
+                    await SetCurrentGame();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException("DiscordRichPresence::OnGameJoin", ex);
+                }
+            });
+            _activityWatcher.OnGameLeave += (_, _) => Task.Run(async () =>
+            {
+                try
+                {
+                    await SetCurrentGame();
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    App.Logger.WriteException("DiscordRichPresence::OnGameLeave", ex);
+                }
+            });
             _activityWatcher.OnRPCMessage += (_, message) => ProcessRPCMessage(message);
 
             _rpcClient.OnReady += (_, e) =>
@@ -57,7 +81,16 @@ namespace RiftStrap.Integrations
             if (message.Command != "SetRichPresence" && message.Command != "SetLaunchData")
                 return;
 
-            if (_currentPresence is null || _originalPresence is null)
+            DiscordRPC.RichPresence? currentPresence;
+            DiscordRPC.RichPresence? originalPresence;
+
+            lock (_presenceLock)
+            {
+                currentPresence = _currentPresence;
+                originalPresence = _originalPresence;
+            }
+
+            if (currentPresence is null || originalPresence is null)
             {
                 App.Logger.WriteLine(LOG_IDENT, "Presence is not set, enqueuing message");
                 _messageQueue.Enqueue(message);
@@ -66,11 +99,11 @@ namespace RiftStrap.Integrations
 
             if (message.Command == "SetLaunchData")
             {
-                _currentPresence.Buttons = GetButtons();
+                currentPresence.Buttons = GetButtons();
             }
             else if (message.Command == "SetRichPresence")
             {
-                ProcessSetRichPresence(message, implicitUpdate);
+                ProcessSetRichPresence(message, implicitUpdate, currentPresence, originalPresence);
             }
 
             if (implicitUpdate)
@@ -150,25 +183,29 @@ namespace RiftStrap.Integrations
                     _currentPresence.Assets.LargeImageKey = url;
             }
 
-            _smallImgBeingFetched = null;
-            _largeImgBeingFetched = null;
+            lock (_presenceLock)
+            {
+                _smallImgBeingFetched = null;
+                _largeImgBeingFetched = null;
+            }
 
             if (implicitUpdate)
                 UpdatePresence();
         }
 
-        private void ProcessSetRichPresence(Message message, bool implicitUpdate)
+        private void ProcessSetRichPresence(Message message, bool implicitUpdate, DiscordRPC.RichPresence currentPresence, DiscordRPC.RichPresence originalPresence)
         {
             const string LOG_IDENT = "DiscordRichPresence::ProcessSetRichPresence";
             Models.RiftStrapRPC.RichPresence? presenceData;
 
-            Debug.Assert(_currentPresence is not null);
-            Debug.Assert(_originalPresence is not null);
-
-            if (_fetchThumbnailsToken != null)
+            lock (_presenceLock)
             {
-                _fetchThumbnailsToken.Cancel();
-                _fetchThumbnailsToken = null;
+                if (_fetchThumbnailsToken != null)
+                {
+                    _fetchThumbnailsToken.Cancel();
+                    _fetchThumbnailsToken.Dispose();
+                    _fetchThumbnailsToken = null;
+                }
             }
 
             try
@@ -192,9 +229,9 @@ namespace RiftStrap.Integrations
                 if (presenceData.Details.Length > 128)
                     App.Logger.WriteLine(LOG_IDENT, $"Details cannot be longer than 128 characters");
                 else if (presenceData.Details == "<reset>")
-                    _currentPresence.Details = _originalPresence.Details;
+                    currentPresence.Details = originalPresence.Details;
                 else
-                    _currentPresence.Details = presenceData.Details;
+                    currentPresence.Details = presenceData.Details;
             }
 
             if (presenceData.State is not null)
@@ -202,20 +239,20 @@ namespace RiftStrap.Integrations
                 if (presenceData.State.Length > 128)
                     App.Logger.WriteLine(LOG_IDENT, $"State cannot be longer than 128 characters");
                 else if (presenceData.State == "<reset>")
-                    _currentPresence.State = _originalPresence.State;
+                    currentPresence.State = originalPresence.State;
                 else
-                    _currentPresence.State = presenceData.State;
+                    currentPresence.State = presenceData.State;
             }
 
             if (presenceData.TimestampStart == 0)
-                _currentPresence.Timestamps.Start = null;
+                currentPresence.Timestamps.Start = null;
             else if (presenceData.TimestampStart is not null)
-                _currentPresence.Timestamps.StartUnixMilliseconds = presenceData.TimestampStart * 1000;
+                currentPresence.Timestamps.StartUnixMilliseconds = presenceData.TimestampStart * 1000;
 
             if (presenceData.TimestampEnd == 0)
-                _currentPresence.Timestamps.End = null;
+                currentPresence.Timestamps.End = null;
             else if (presenceData.TimestampEnd is not null)
-                _currentPresence.Timestamps.EndUnixMilliseconds = presenceData.TimestampEnd * 1000;
+                currentPresence.Timestamps.EndUnixMilliseconds = presenceData.TimestampEnd * 1000;
 
             ulong? smallImgFetch = null;
             ulong? largeImgFetch = null;
@@ -224,13 +261,13 @@ namespace RiftStrap.Integrations
             {
                 if (presenceData.SmallImage.Clear)
                 {
-                    _currentPresence.Assets.SmallImageKey = "";
+                    currentPresence.Assets.SmallImageKey = "";
                     _smallImgBeingFetched = null;
                 }
                 else if (presenceData.SmallImage.Reset)
                 {
-                    _currentPresence.Assets.SmallImageText = _originalPresence.Assets.SmallImageText;
-                    _currentPresence.Assets.SmallImageKey = _originalPresence.Assets.SmallImageKey;
+                    currentPresence.Assets.SmallImageText = originalPresence.Assets.SmallImageText;
+                    currentPresence.Assets.SmallImageKey = originalPresence.Assets.SmallImageKey;
                     _smallImgBeingFetched = null;
                 }
                 else
@@ -245,13 +282,13 @@ namespace RiftStrap.Integrations
                         }
                         else
                         {
-                            _currentPresence.Assets.SmallImageKey = entry.Url;
+                            currentPresence.Assets.SmallImageKey = entry.Url;
                             _smallImgBeingFetched = null;
                         }
                     }
 
                     if (presenceData.SmallImage.HoverText is not null)
-                        _currentPresence.Assets.SmallImageText = presenceData.SmallImage.HoverText;
+                        currentPresence.Assets.SmallImageText = presenceData.SmallImage.HoverText;
                 }
             }
 
@@ -259,13 +296,13 @@ namespace RiftStrap.Integrations
             {
                 if (presenceData.LargeImage.Clear)
                 {
-                    _currentPresence.Assets.LargeImageKey = "";
+                    currentPresence.Assets.LargeImageKey = "";
                     _largeImgBeingFetched = null;
                 }
                 else if (presenceData.LargeImage.Reset)
                 {
-                    _currentPresence.Assets.LargeImageText = _originalPresence.Assets.LargeImageText;
-                    _currentPresence.Assets.LargeImageKey = _originalPresence.Assets.LargeImageKey;
+                    currentPresence.Assets.LargeImageText = originalPresence.Assets.LargeImageText;
+                    currentPresence.Assets.LargeImageKey = originalPresence.Assets.LargeImageKey;
                     _largeImgBeingFetched = null;
                 }
                 else
@@ -280,25 +317,54 @@ namespace RiftStrap.Integrations
                         }
                         else
                         {
-                            _currentPresence.Assets.LargeImageKey = entry.Url;
+                            currentPresence.Assets.LargeImageKey = entry.Url;
                             _largeImgBeingFetched = null;
                         }
                     }
 
                     if (presenceData.LargeImage.HoverText is not null)
-                        _currentPresence.Assets.LargeImageText = presenceData.LargeImage.HoverText;
+                        currentPresence.Assets.LargeImageText = presenceData.LargeImage.HoverText;
                 }
             }
 
-            if (smallImgFetch != null)
-                _smallImgBeingFetched = smallImgFetch;
-            if (largeImgFetch != null)
-                _largeImgBeingFetched = largeImgFetch;
-
-            if (_smallImgBeingFetched != null || _largeImgBeingFetched != null)
+            lock (_presenceLock)
             {
-                _fetchThumbnailsToken = new CancellationTokenSource();
-                Task.Run(() => UpdatePresenceIconsAsync(_smallImgBeingFetched, _largeImgBeingFetched, implicitUpdate, _fetchThumbnailsToken.Token));
+                if (smallImgFetch != null)
+                    _smallImgBeingFetched = smallImgFetch;
+                if (largeImgFetch != null)
+                    _largeImgBeingFetched = largeImgFetch;
+
+                if (_smallImgBeingFetched != null || _largeImgBeingFetched != null)
+                {
+                    var cts = new CancellationTokenSource();
+                    _fetchThumbnailsToken = cts;
+
+                    ulong? smallImg = _smallImgBeingFetched;
+                    ulong? largeImg = _largeImgBeingFetched;
+
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await UpdatePresenceIconsAsync(smallImg, largeImg, implicitUpdate, cts.Token);
+                        }
+                        catch (OperationCanceledException) { }
+                        catch (Exception ex)
+                        {
+                            App.Logger.WriteException(LOG_IDENT, ex);
+                        }
+                        finally
+                        {
+                            lock (_presenceLock)
+                            {
+                                if (_fetchThumbnailsToken == cts)
+                                    _fetchThumbnailsToken = null;
+                            }
+
+                            cts.Dispose();
+                        }
+                    });
+                }
             }
         }
 
@@ -322,7 +388,9 @@ namespace RiftStrap.Integrations
             {
                 App.Logger.WriteLine(LOG_IDENT, "Not in game, clearing presence");
 
-                _currentPresence = _originalPresence =  null;
+                lock (_presenceLock)
+                    _currentPresence = _originalPresence = null;
+
                 _messageQueue.Clear();
 
                 UpdatePresence();
@@ -389,27 +457,30 @@ namespace RiftStrap.Integrations
             if (universeName.Length < 2)
                 universeName = $"{universeName}\x2800\x2800\x2800";
 
-            _currentPresence = new DiscordRPC.RichPresence
+            lock (_presenceLock)
             {
-                Details = universeName,
-                State = status,
-                Timestamps = new Timestamps { Start = timeStarted.ToUniversalTime() },
-                Buttons = GetButtons(),
-                Assets = new Assets
+                _currentPresence = new DiscordRPC.RichPresence
                 {
-                    LargeImageKey = icon,
-                    LargeImageText = universeDetails.Data.Name,
-                    SmallImageKey = smallImage,
-                    SmallImageText = smallImageText
-                }
-            };
+                    Details = universeName,
+                    State = status,
+                    Timestamps = new Timestamps { Start = timeStarted.ToUniversalTime() },
+                    Buttons = GetButtons(),
+                    Assets = new Assets
+                    {
+                        LargeImageKey = icon,
+                        LargeImageText = universeDetails.Data.Name,
+                        SmallImageKey = smallImage,
+                        SmallImageText = smallImageText
+                    }
+                };
 
-            _originalPresence = _currentPresence.Clone();
+                _originalPresence = _currentPresence.Clone();
+            }
 
-            if (_messageQueue.Any())
+            if (_messageQueue.TryDequeue(out var queuedMessage))
             {
                 App.Logger.WriteLine(LOG_IDENT, "Processing queued messages");
-                ProcessRPCMessage(_messageQueue.Dequeue(), false);
+                ProcessRPCMessage(queuedMessage, false);
             }
 
             UpdatePresence();
@@ -471,6 +542,14 @@ namespace RiftStrap.Integrations
         public void Dispose()
         {
             App.Logger.WriteLine("DiscordRichPresence::Dispose", "Cleaning up Discord RPC and Presence");
+
+            lock (_presenceLock)
+            {
+                _fetchThumbnailsToken?.Cancel();
+                _fetchThumbnailsToken?.Dispose();
+                _fetchThumbnailsToken = null;
+            }
+
             _rpcClient.ClearPresence();
             _rpcClient.Dispose();
             GC.SuppressFinalize(this);

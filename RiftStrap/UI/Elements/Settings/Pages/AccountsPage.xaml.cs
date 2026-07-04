@@ -10,6 +10,7 @@ namespace RiftStrap.UI.Elements.Settings.Pages
     public partial class AccountsPage : UiPage
     {
         private readonly AccountManager _manager = new();
+        private bool _isAdding;
 
         public AccountsPage() => InitializeComponent();
 
@@ -30,44 +31,59 @@ namespace RiftStrap.UI.Elements.Settings.Pages
 
         private async void AddAccount_Click(object sender, RoutedEventArgs e)
         {
-            // Accept a single cookie OR a whole list (one cookie per line) — multiline input.
-            var input = UI.Controls.Rift.RiftInputDialog.Show(
-                "Add Roblox Account(s)",
-                "Paste one .ROBLOSECURITY cookie — or a whole list, one cookie per line:\n\n(Cookies are encrypted and stored locally)",
-                "", true);
+            // Guard against re-entrant clicks while an add is in flight (async void +
+            // awaited AddAccountAsync would otherwise allow duplicate accounts via a race).
+            if (_isAdding) return;
+            _isAdding = true;
+            var addButton = sender as System.Windows.Controls.Control;
+            if (addButton != null) addButton.IsEnabled = false;
 
-            if (string.IsNullOrWhiteSpace(input)) return;
-
-            var cookies = input
-                .Replace("\r", "")
-                .Split('\n')
-                .Select(ParseCookie)
-                .Where(c => !string.IsNullOrEmpty(c))
-                .Distinct()
-                .ToList();
-
-            if (cookies.Count == 0) return;
-
-            int added = 0, failed = 0;
-            var names = new List<string>();
-
-            foreach (var cookie in cookies)
+            try
             {
-                var account = await _manager.AddAccountAsync(cookie);
-                if (account != null) { added++; names.Add("@" + account.Username); }
-                else failed++;
+                // Accept a single cookie OR a whole list (one cookie per line) — multiline input.
+                var input = UI.Controls.Rift.RiftInputDialog.Show(
+                    "Add Roblox Account(s)",
+                    "Paste one .ROBLOSECURITY cookie — or a whole list, one cookie per line:\n\n(Cookies are encrypted and stored locally)",
+                    "", true);
+
+                if (string.IsNullOrWhiteSpace(input)) return;
+
+                var cookies = input
+                    .Replace("\r", "")
+                    .Split('\n')
+                    .Select(ParseCookie)
+                    .Where(c => !string.IsNullOrEmpty(c))
+                    .Distinct()
+                    .ToList();
+
+                if (cookies.Count == 0) return;
+
+                int added = 0, failed = 0;
+                var names = new List<string>();
+
+                foreach (var cookie in cookies)
+                {
+                    var account = await _manager.AddAccountAsync(cookie);
+                    if (account != null) { added++; names.Add("@" + account.Username); }
+                    else failed++;
+                }
+
+                RefreshList();
+
+                if (added == 0)
+                    Frontend.ShowMessageBox("No accounts added — the cookie(s) were invalid or expired.", MessageBoxImage.Warning);
+                else if (cookies.Count == 1)
+                    Frontend.ShowMessageBox($"Added: {names[0]}", MessageBoxImage.Information);
+                else
+                    Frontend.ShowMessageBox(
+                        $"Added {added} account(s)" + (failed > 0 ? $", {failed} failed" : "") + ".\n" + string.Join(", ", names),
+                        MessageBoxImage.Information);
             }
-
-            RefreshList();
-
-            if (added == 0)
-                Frontend.ShowMessageBox("No accounts added — the cookie(s) were invalid or expired.", MessageBoxImage.Warning);
-            else if (cookies.Count == 1)
-                Frontend.ShowMessageBox($"Added: {names[0]}", MessageBoxImage.Information);
-            else
-                Frontend.ShowMessageBox(
-                    $"Added {added} account(s)" + (failed > 0 ? $", {failed} failed" : "") + ".\n" + string.Join(", ", names),
-                    MessageBoxImage.Information);
+            finally
+            {
+                _isAdding = false;
+                if (addButton != null) addButton.IsEnabled = true;
+            }
         }
 
         // Extract the bare .ROBLOSECURITY value from a raw cookie, a "...ROBLOSECURITY=xxx;..." string,

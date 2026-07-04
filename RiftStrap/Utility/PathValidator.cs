@@ -16,7 +16,7 @@ namespace RiftStrap.Utility
             ReservedDirectoryName
         }
 
-        private static readonly string[] _reservedNames = new string[]
+        private static readonly HashSet<string> _reservedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "CON",
             "PRN",
@@ -86,7 +86,7 @@ namespace RiftStrap.Utility
                 if (part.IndexOfAny(_invalidPathChars) != -1)
                     return ValidationResult.IllegalCharacter;
 
-                if (_reservedNames.Contains(part))
+                if (_reservedNames.Contains(Path.GetFileNameWithoutExtension(part).ToUpperInvariant()))
                     return ValidationResult.ReservedDirectoryName;
             }
 

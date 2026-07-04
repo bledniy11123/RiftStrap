@@ -184,7 +184,7 @@ namespace RiftStrap.Features.AccountSwitcher
             using var request = new HttpRequestMessage(HttpMethod.Get, "https://users.roblox.com/v1/users/authenticated");
             request.Headers.Add("Cookie", $".ROBLOSECURITY={cookie}");
 
-            var response = await App.HttpClient.SendAsync(request);
+            using var response = await App.HttpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode) return null;
 
             var json = await response.Content.ReadAsStringAsync();
@@ -221,8 +221,24 @@ namespace RiftStrap.Features.AccountSwitcher
                 var json = File.ReadAllText(StoreFile);
                 _store = JsonSerializer.Deserialize<AccountStore>(json) ?? new();
             }
-            catch
+            catch (JsonException ex)
             {
+                var backupPath = StoreFile + ".bad";
+                try
+                {
+                    File.Copy(StoreFile, backupPath, overwrite: true);
+                }
+                catch (Exception backupEx)
+                {
+                    App.Logger.WriteLine("AccountManager", $"Failed to back up corrupt accounts file: {backupEx.Message}");
+                }
+
+                App.Logger.WriteLine("AccountManager", $"Accounts file is corrupt, backed up to {backupPath} and starting empty: {ex.Message}");
+                _store = new();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteLine("AccountManager", $"Failed to load accounts: {ex.Message}");
                 _store = new();
             }
         }
@@ -232,7 +248,20 @@ namespace RiftStrap.Features.AccountSwitcher
             try
             {
                 var json = JsonSerializer.Serialize(_store, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(StoreFile, json);
+
+                var tempPath = StoreFile + ".tmp";
+                using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var writer = new StreamWriter(stream, new UTF8Encoding(false)))
+                {
+                    writer.Write(json);
+                    writer.Flush();
+                    stream.Flush(true);
+                }
+
+                if (File.Exists(StoreFile))
+                    File.Replace(tempPath, StoreFile, null);
+                else
+                    File.Move(tempPath, StoreFile);
             }
             catch (Exception ex)
             {

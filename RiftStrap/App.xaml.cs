@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Windows;
 using System.Windows.Shell;
 using System.Windows.Threading;
@@ -69,7 +70,7 @@ namespace RiftStrap
             )
         );
 
-        private static bool _showingExceptionDialog = false;
+        private static int _showingExceptionDialog = 0;
 
         private static string? _webUrl = null;
         public static string WebUrl
@@ -125,10 +126,8 @@ namespace RiftStrap
             if (log)
                 Logger.WriteException("App::FinalizeExceptionHandling", ex);
 
-            if (_showingExceptionDialog)
+            if (Interlocked.Exchange(ref _showingExceptionDialog, 1) != 0)
                 return;
-
-            _showingExceptionDialog = true;
 
             SendLog();
 

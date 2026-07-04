@@ -206,17 +206,17 @@ namespace RiftStrap
                     return;
                 }
 
-                try
+                foreach (var process in processes)
                 {
-                    foreach (var process in processes)
+                    try
                     {
                         process.Kill();
                         process.Close();
                     }
-                }
-                catch (Exception ex)
-                {
-                    App.Logger.WriteLine(LOG_IDENT, $"Failed to close process! {ex}");
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, $"Failed to close process! {ex}");
+                    }
                 }
             }
 
@@ -304,7 +304,7 @@ namespace RiftStrap
                 });
             }
 
-            bool deleteFolder = Directory.GetFiles(Paths.Base).Length <= 3;
+            bool deleteFolder = !keepData && Directory.GetFiles(Paths.Base).Length <= 3;
 
             if (deleteFolder)
                 cleanupSequence.Add(() => Directory.Delete(Paths.Base, true));

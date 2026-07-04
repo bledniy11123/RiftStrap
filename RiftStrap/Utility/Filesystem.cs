@@ -11,14 +11,20 @@ namespace RiftStrap.Utility
     {
         internal static long GetFreeDiskSpace(string path)
         {
-            foreach (var drive in DriveInfo.GetDrives())
-            {
+            string? pathRoot = Path.GetPathRoot(path);
 
-                if (path.ToUpperInvariant().StartsWith(drive.Name))
-                    return drive.AvailableFreeSpace;
+            if (!string.IsNullOrEmpty(pathRoot))
+            {
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (string.Equals(pathRoot, drive.Name, StringComparison.OrdinalIgnoreCase))
+                        return drive.AvailableFreeSpace;
+                }
             }
 
-            return -1;
+            // couldn't resolve the path to a known drive (e.g. UNC/network path);
+            // treat as 'unknown' rather than 'insufficient' so callers don't abort
+            return long.MaxValue;
         }
 
         internal static void AssertReadOnly(string filePath)

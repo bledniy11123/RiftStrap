@@ -142,6 +142,10 @@ namespace RiftStrap
                 ActivityWatcher.OnGameLeave += (_, _) =>
                 {
                     _gameProfiles.OnGameLeave();
+                    // Clear AutoRejoin session state on leave — otherwise _lastPlaceId stays set and a
+                    // stray disconnect line while out-of-game would trigger a false rejoin to the game
+                    // the user deliberately left. (Any in-flight rejoin already snapshotted its target.)
+                    _autoRejoin.Clear();
                     _pluginHost.NotifyGameLeave();
                     _analytics.EndSession();
                     _perfMonitor.Stop();
@@ -172,6 +176,17 @@ namespace RiftStrap
 
             _notifications.Start();
             _memoryCleaner.Start();
+            // Enforce the daily play-time limit: nothing subscribed to these events, so the limit and
+            // break reminders did nothing (bug: "daily limit never enforced"). Surface reminders as tray
+            // balloons; on hitting the daily limit, notify and close the Roblox client.
+            _timeLimiter.OnReminder += msg =>
+                Frontend.ShowBalloonTip("RiftStrap", msg, System.Windows.Forms.ToolTipIcon.Info);
+            _timeLimiter.OnLimitReached += () =>
+            {
+                Frontend.ShowBalloonTip("RiftStrap", "Daily play-time limit reached - closing Roblox.",
+                    System.Windows.Forms.ToolTipIcon.Warning);
+                KillRobloxProcess();
+            };
             _timeLimiter.StartSession();
             _screenshotService.StartWatching();
 
@@ -242,7 +257,18 @@ namespace RiftStrap
             _screenshotService.Dispose();
             _notifyIcon?.Dispose();
             RichPresence?.Dispose();
-            _lock.Dispose();
+
+            // Mutex has thread-affinity: if Dispose runs on a thread other than the one
+            // that acquired the lock, ReleaseMutex throws. Swallow it so a failed release
+            // cannot propagate out of Dispose and skip App.Terminate()/fault reporting.
+            try
+            {
+                _lock.Dispose();
+            }
+            catch (Exception ex)
+            {
+                App.Logger.WriteException("Watcher::Dispose", ex);
+            }
 
             GC.SuppressFinalize(this);
         }

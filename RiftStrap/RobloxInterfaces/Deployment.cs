@@ -42,7 +42,7 @@ namespace RiftStrap.RobloxInterfaces
 
             try
             {
-                var response = await App.HttpClient.GetAsync($"{url}/versionStudio", token);
+                using var response = await App.HttpClient.GetAsync($"{url}/versionStudio", token);
 
                 response.EnsureSuccessStatusCode();
 
@@ -69,7 +69,7 @@ namespace RiftStrap.RobloxInterfaces
         {
             const string LOG_IDENT = "Deployment::InitializeConnectivity";
 
-            var tokenSource = new CancellationTokenSource();
+            using var tokenSource = new CancellationTokenSource();
 
             var exceptions = new List<Exception>();
             var tasks = (from entry in BaseUrls select TestConnection(entry.Key, entry.Value, tokenSource.Token)).ToList();
@@ -89,6 +89,10 @@ namespace RiftStrap.RobloxInterfaces
             }
 
             tokenSource.Cancel();
+
+            // Observe any remaining tasks so their exceptions don't go unobserved.
+            if (tasks.Any())
+                _ = Task.WhenAll(tasks).ContinueWith(t => { _ = t.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
 
             if (string.IsNullOrEmpty(BaseUrl))
             {
@@ -293,7 +297,7 @@ namespace RiftStrap.RobloxInterfaces
                 if (!seen.Add(guid)) continue;
 
                 var ver = $"0.{match.Groups[5].Value}.{match.Groups[6].Value}.{match.Groups[7].Value}";
-                DateTime.TryParse(match.Groups[3].Value, out var ts);
+                DateTime.TryParse(match.Groups[3].Value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var ts);
 
                 results.Add(new VersionHistoryEntry
                 {
@@ -312,7 +316,8 @@ namespace RiftStrap.RobloxInterfaces
             try
             {
                 string url = GetLocation($"/{versionGuid}-rbxPkgManifest.txt");
-                var response = await App.HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
+                using var request = new HttpRequestMessage(HttpMethod.Head, url);
+                using var response = await App.HttpClient.SendAsync(request);
                 return response.IsSuccessStatusCode;
             }
             catch

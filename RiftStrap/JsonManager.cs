@@ -67,6 +67,17 @@ namespace RiftStrap
                 App.Logger.WriteLine(LOG_IDENT, "Failed to load!");
                 App.Logger.WriteException(LOG_IDENT, ex);
 
+                // Only treat true corruption (invalid JSON / null deserialization) as a reason to
+                // reset the config to defaults. Transient IO/permission errors must never cause the
+                // on-disk file to be overwritten with defaults, or live settings/FastFlags are lost.
+                bool isCorruption = ex is JsonException || ex is ArgumentNullException;
+
+                if (!isCorruption)
+                {
+                    // read failed transiently: preserve the file on disk, do not Save() over it
+                    return false;
+                }
+
                 if (alertFailure)
                 {
                     string message = "";
@@ -78,17 +89,18 @@ namespace RiftStrap
 
                     if (!String.IsNullOrEmpty(message))
                         Frontend.ShowMessageBox($"{message}\n\n{ex.Message}", System.Windows.MessageBoxImage.Warning);
+                }
 
-                    try
-                    {
-
-                        File.Copy(FileLocation, FileLocation + ".bak", true);
-                    }
-                    catch (Exception copyEx)
-                    {
-                        App.Logger.WriteLine(LOG_IDENT, $"Failed to create backup file: {FileLocation}.bak");
-                        App.Logger.WriteException(LOG_IDENT, copyEx);
-                    }
+                // back up the corrupt file unconditionally (regardless of alertFailure) before
+                // overwriting it with defaults, so the original is always recoverable
+                try
+                {
+                    File.Copy(FileLocation, FileLocation + ".bak", true);
+                }
+                catch (Exception copyEx)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, $"Failed to create backup file: {FileLocation}.bak");
+                    App.Logger.WriteException(LOG_IDENT, copyEx);
                 }
 
                 Loaded = true;
@@ -98,7 +110,7 @@ namespace RiftStrap
             }
         }
 
-        public virtual void Save()
+        public virtual bool Save()
         {
             string LOG_IDENT = $"{LOG_IDENT_CLASS}::Save";
 
@@ -125,10 +137,12 @@ namespace RiftStrap
                 string errorMessage = string.Format(Resources.Strings.Bootstrapper_JsonManagerSaveFailed, ClassName, ex.Message);
                 Frontend.ShowMessageBox(errorMessage, System.Windows.MessageBoxImage.Warning);
 
-                return;
+                return false;
             }
 
             App.Logger.WriteLine(LOG_IDENT, "Save complete!");
+
+            return true;
         }
 
         public virtual void Delete()
@@ -160,7 +174,12 @@ namespace RiftStrap
         public bool HasFileOnDiskChanged()
         {
 
-            if (string.IsNullOrEmpty(LastFileHash) && File.Exists(FileLocation))
+            // guard existence before hashing: a file removed after a hash was recorded must
+            // yield a clean "changed" result rather than throwing FileNotFoundException
+            if (!File.Exists(FileLocation))
+                return !string.IsNullOrEmpty(LastFileHash);
+
+            if (string.IsNullOrEmpty(LastFileHash))
                 return true;
 
             return LastFileHash != MD5Hash.FromFile(FileLocation);

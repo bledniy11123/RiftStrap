@@ -61,7 +61,7 @@ namespace RiftStrap.Utility
                     }
                 },
                 state: null,
-                cancellationToken,
+                CancellationToken.None,
                 TaskCreationOptions.LongRunning,
                 TaskScheduler.Default);
 

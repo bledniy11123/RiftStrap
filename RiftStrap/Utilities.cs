@@ -34,7 +34,14 @@ namespace RiftStrap
             if (version.StartsWith('v'))
                 version = version[1..];
 
+            // Strip SemVer build metadata ('+build') and prerelease suffix ('-beta1') so that
+            // e.g. '2.12.0-beta1' parses as '2.12.0'. Without this, System.Version.Parse throws on
+            // the '-'/'+' and CompareVersions falls back to Equal, silently skipping the update.
             int idx = version.IndexOf('+');
+            if (idx != -1)
+                version = version[..idx];
+
+            idx = version.IndexOf('-');
             if (idx != -1)
                 version = version[..idx];
 

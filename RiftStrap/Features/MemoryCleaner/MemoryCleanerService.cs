@@ -30,7 +30,8 @@ namespace RiftStrap.Features.MemoryCleaner
             if (!AutoCleanEnabled) return;
 
             _cts = new CancellationTokenSource();
-            Task.Run(() => MonitorLoop(_cts.Token));
+            var token = _cts.Token;
+            Task.Run(() => MonitorLoop(token));
             App.Logger.WriteLine("MemoryCleaner", $"Started (threshold: {ThresholdMB}MB, interval: {IntervalSeconds}s)");
         }
 

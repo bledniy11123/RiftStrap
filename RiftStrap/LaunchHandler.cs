@@ -225,15 +225,17 @@ namespace RiftStrap
                 App.Terminate(ErrorCode.ERROR_FILE_NOT_FOUND);
             }
 
-            if (App.Settings.Prop.ConfirmLaunches && !App.Settings.Prop.MultiInstanceLaunching && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var _))
+            if (App.Settings.Prop.ConfirmLaunches && !App.Settings.Prop.MultiInstanceLaunching && Mutex.TryOpenExisting("ROBLOX_singletonMutex", out var singletonMutex))
             {
-
-                var result = Frontend.ShowMessageBox(Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
-
-                if (result != MessageBoxResult.Yes)
+                using (singletonMutex)
                 {
-                    App.Terminate();
-                    return;
+                    var result = Frontend.ShowMessageBox(Strings.Bootstrapper_ConfirmLaunch, MessageBoxImage.Warning, MessageBoxButton.YesNo);
+
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        App.Terminate();
+                        return;
+                    }
                 }
             }
 
@@ -333,6 +335,16 @@ namespace RiftStrap
                 }
                 Diag($"ROBLOX_singletonMutex created={created} owned={owned}");
 
+                if (!owned)
+                {
+                    // We failed to acquire ROBLOX_singletonMutex, so we cannot protect the client.
+                    // Do NOT signal ready: leaving the event unset makes the bootstrapper time out
+                    // and skip/warn rather than launching an unprotected client that Roblox can kill.
+                    Diag("failed to acquire ROBLOX_singletonMutex -> NOT signalling ready, aborting holder");
+                    App.Terminate();   // exit cleanly like the sibling path at 316 (don't leave the holder lingering)
+                    return;
+                }
+
                 // Tell the launching bootstrapper the mutex is owned; keep the handle open so the
                 // event stays set for later launches while this holder lives.
                 ready = new EventWaitHandle(false, EventResetMode.ManualReset, "RiftStrap-MultiInstanceReady");
@@ -407,7 +419,18 @@ namespace RiftStrap
             {
                 App.Logger.WriteLine(LOG_IDENT, "Started event waiter");
                 using (EventWaitHandle handle = new EventWaitHandle(false, EventResetMode.AutoReset, "RiftStrap-BackgroundUpdaterKillEvent"))
-                    handle.WaitOne();
+                {
+                    // Wait on either the kill event or cts cancellation, so cts.Cancel() (raised when the
+                    // bootstrapper finishes on its own) actually unblocks this waiter instead of leaving it
+                    // parked until process exit.
+                    int signalled = WaitHandle.WaitAny(new[] { handle, cts.Token.WaitHandle });
+
+                    if (signalled != 0)
+                    {
+                        App.Logger.WriteLine(LOG_IDENT, "Event waiter cancelled");
+                        return;
+                    }
+                }
 
                 App.Logger.WriteLine(LOG_IDENT, "Received close event, killing it all!");
                 App.Bootstrapper.Cancel();
@@ -426,6 +449,9 @@ namespace RiftStrap
                         App.FinalizeExceptionHandling(t.Exception);
                 }
 
+                // NOTE: deliberately not disposing cts here — the waiter task may still be evaluating
+                // cts.Token.WaitHandle, and disposing it would throw ObjectDisposedException on that
+                // thread (unobserved). App.Terminate() exits the process next, so the OS reclaims it.
                 App.Terminate();
             });
 

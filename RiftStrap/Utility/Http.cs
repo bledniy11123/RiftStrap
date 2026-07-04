@@ -5,13 +5,11 @@ namespace RiftStrap.Utility
 
         public static async Task<T> GetJson<T>(string url)
         {
-            var request = await App.HttpClient.GetAsync(url);
+            using var response = await App.HttpClient.GetAsync(url);
 
-            request.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync();
 
-            string json = await request.Content.ReadAsStringAsync();
-
-            return JsonSerializer.Deserialize<T>(json)!;
+            return await JsonSerializer.DeserializeAsync<T>(stream) ?? throw new InvalidOperationException($"Null JSON response from {url}");
         }
     }
 }

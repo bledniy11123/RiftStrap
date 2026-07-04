@@ -83,7 +83,7 @@ namespace RiftStrap.Utility
         public static void RegisterStudioFileType(string key)
         {
             using RegistryKey uriKey = Registry.CurrentUser.CreateSubKey($@"Software\Classes\{key}");
-            uriKey.CreateSubKey(RobloxPlaceKey + @"\ShellNew");
+            using RegistryKey shellNewKey = uriKey.CreateSubKey(RobloxPlaceKey + @"\ShellNew");
 
             if (uriKey.GetValue("") as string != RobloxPlaceKey)
                 uriKey.SetValueSafe("", RobloxPlaceKey);

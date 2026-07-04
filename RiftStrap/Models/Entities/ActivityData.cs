@@ -120,7 +120,7 @@ namespace RiftStrap.Models.Entities
                 App.Logger.WriteLine(LOG_IDENT, $"Failed to get server location for {MachineAddress}");
                 App.Logger.WriteException(LOG_IDENT, ex);
 
-                GlobalCache.ServerLocation[MachineAddress] = location;
+                // Do not cache on failure so a later call retries after a transient network error
                 serverQuerySemaphore.Release();
 
                 Frontend.ShowConnectivityDialog(

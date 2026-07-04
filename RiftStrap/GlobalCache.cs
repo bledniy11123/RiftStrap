@@ -1,7 +1,9 @@
-﻿namespace RiftStrap
+﻿using System.Collections.Concurrent;
+
+namespace RiftStrap
 {
     public static class GlobalCache
     {
-        public static readonly Dictionary<string, string?> ServerLocation = new();
+        public static readonly ConcurrentDictionary<string, string?> ServerLocation = new();
     }
 }

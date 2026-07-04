@@ -20,12 +20,13 @@ namespace RiftStrap.Utility
             for (int i = 0; i < requests.Count; i++)
                 requests[i].RequestId = i.ToString();
 
-            var payload = new StringContent(JsonSerializer.Serialize(requests));
+            string payloadJson = JsonSerializer.Serialize(requests);
 
             ThumbnailResponse[] response = null!;
 
             for (int i = 1; i <= RETRIES; i++)
             {
+                var payload = new StringContent(payloadJson);
                 var json = await App.HttpClient.PostFromJsonWithRetriesAsync<ThumbnailBatchResponse>("https://thumbnails.roblox.com/v1/batch", payload, 3, token);
                 if (json == null)
                     throw new InvalidHTTPResponseException("Deserialised ThumbnailBatchResponse is null");
@@ -65,15 +66,27 @@ namespace RiftStrap.Utility
 
             request.RequestId = "0";
 
-            var payload = new StringContent(JsonSerializer.Serialize(new ThumbnailRequest[] { request }));
+            string payloadJson = JsonSerializer.Serialize(new ThumbnailRequest[] { request });
 
             ThumbnailResponse response = null!;
 
             for (int i = 1; i <= RETRIES; i++)
             {
+                var payload = new StringContent(payloadJson);
                 var json = await App.HttpClient.PostFromJsonWithRetriesAsync<ThumbnailBatchResponse>("https://thumbnails.roblox.com/v1/batch", payload, 3, token);
                 if (json == null)
                     throw new InvalidHTTPResponseException("Deserialised ThumbnailBatchResponse is null");
+
+                if (json.Data.Length == 0)
+                {
+                    App.Logger.WriteLine(LOG_IDENT, "Response data array is empty");
+
+                    if (i == RETRIES)
+                        return null;
+
+                    await Task.Delay(RETRY_TIME_INCREMENT * i, token);
+                    continue;
+                }
 
                 response = json.Data[0];
 

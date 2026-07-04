@@ -30,7 +30,6 @@ namespace RiftStrap
             "	<BaseUrl>http://www.roblox.com</BaseUrl>\r\n" +
             "</Settings>\r\n";
 
-        private readonly FastZipEvents _fastZipEvents = new();
         private readonly CancellationTokenSource _cancelTokenSource = new();
 
         private IAppData AppData = default!;
@@ -69,18 +68,6 @@ namespace RiftStrap
         public Bootstrapper(LaunchMode launchMode)
         {
             _launchMode = launchMode;
-
-            _fastZipEvents.FileFailure += (_, e) =>
-            {
-
-                if (!e.Name.EndsWith(".ttf"))
-                    throw e.Exception;
-
-                App.Logger.WriteLine("FastZipEvents::OnFileFailure", $"Failed to extract {e.Name}");
-                _packageExtractionSuccess = false;
-            };
-            _fastZipEvents.DirectoryFailure += (_, e) => throw e.Exception;
-            _fastZipEvents.ProcessFile += (_, e) => e.ContinueRunning = !_cancelTokenSource.IsCancellationRequested;
 
             SetupAppData();
         }
@@ -218,7 +205,10 @@ namespace RiftStrap
 
             await SafeGetLatestVersionInfo();
 
-            CleanupVersionsFolder();
+            if (Utilities.DoesMutexExist(BackgroundUpdaterMutexName))
+                App.Logger.WriteLine(LOG_IDENT, "Background updater is active, skipping version folder cleanup");
+            else
+                CleanupVersionsFolder(_latestVersionGuid);
 
             bool allModificationsApplied = true;
 
@@ -926,7 +916,7 @@ namespace RiftStrap
             }
         }
 
-        public static void CleanupVersionsFolder()
+        public static void CleanupVersionsFolder(string? keepVersionGuid = null)
         {
             const string LOG_IDENT = "Bootstrapper::CleanupVersionsFolder";
 
@@ -946,7 +936,7 @@ namespace RiftStrap
             {
                 string dirName = Path.GetFileName(dir);
 
-                if (dirName != App.PlayerState.Prop.VersionGuid && dirName != App.StudioState.Prop.VersionGuid)
+                if (dirName != App.PlayerState.Prop.VersionGuid && dirName != App.StudioState.Prop.VersionGuid && dirName != keepVersionGuid)
                 {
 
                     if (!TryDeleteRobloxInDirectory(dir))
@@ -1109,7 +1099,7 @@ namespace RiftStrap
                 _taskbarProgressIncrement = App.TaskbarProgressMaximum / (double)totalPackedSize;
             }
 
-            var extractionTasks = new List<Task>();
+            var extractionTasks = new List<Task<bool>>();
 
             foreach (var package in _versionPackageManifest)
             {
@@ -1134,7 +1124,10 @@ namespace RiftStrap
                 SetStatus(Strings.Bootstrapper_Status_Configuring);
             }
 
-            await Task.WhenAll(extractionTasks);
+            bool[] extractionResults = await Task.WhenAll(extractionTasks);
+
+            if (extractionResults.Any(result => !result))
+                _packageExtractionSuccess = false;
 
             App.Logger.WriteLine(LOG_IDENT, "Writing AppSettings.xml...");
             await File.WriteAllTextAsync(Path.Combine(_latestVersionDirectory, "AppSettings.xml"), AppSettings);
@@ -1150,7 +1143,7 @@ namespace RiftStrap
                 if (hklmKey is not null || hkcuKey is not null)
                 {
 
-                    App.State.Prop.PromptWebView2Install = true;
+                    App.State.Prop.PromptWebView2Install = false;
                 }
                 else
                 {
@@ -1585,7 +1578,7 @@ namespace RiftStrap
             }
         }
 
-        private void ExtractPackage(Package package, List<string>? files = null)
+        private bool ExtractPackage(Package package, List<string>? files = null)
         {
             const string LOG_IDENT = "Bootstrapper::ExtractPackage";
 
@@ -1594,7 +1587,7 @@ namespace RiftStrap
             if (packageDir is null)
             {
                 App.Logger.WriteLine(LOG_IDENT, $"WARNING: {package.Name} was not found in the package map!");
-                return;
+                return true;
             }
 
             string packageFolder = Path.Combine(_latestVersionDirectory, packageDir);
@@ -1612,13 +1605,30 @@ namespace RiftStrap
 
             App.Logger.WriteLine(LOG_IDENT, $"Extracting {package.Name}...");
 
-            var fastZip = new FastZip(_fastZipEvents);
+            bool success = true;
+
+            var fastZipEvents = new FastZipEvents();
+            fastZipEvents.FileFailure += (_, e) =>
+            {
+
+                if (!e.Name.EndsWith(".ttf"))
+                    throw e.Exception;
+
+                App.Logger.WriteLine("FastZipEvents::OnFileFailure", $"Failed to extract {e.Name}");
+                success = false;
+            };
+            fastZipEvents.DirectoryFailure += (_, e) => throw e.Exception;
+            fastZipEvents.ProcessFile += (_, e) => e.ContinueRunning = !_cancelTokenSource.IsCancellationRequested;
+
+            var fastZip = new FastZip(fastZipEvents);
             fastZip.RestoreDateTimeOnExtract = false;
             fastZip.RestoreAttributesOnExtract = false;
 
             fastZip.ExtractZip(package.DownloadPath, packageFolder, fileFilter);
 
             App.Logger.WriteLine(LOG_IDENT, $"Finished extracting {package.Name}");
+
+            return success;
         }
     }
 }

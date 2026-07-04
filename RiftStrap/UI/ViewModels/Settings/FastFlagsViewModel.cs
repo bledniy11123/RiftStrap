@@ -73,15 +73,64 @@ namespace RiftStrap.UI.ViewModels.Settings
 
             set
             {
+                const string LOG_IDENT = "FastFlagsViewModel::ResetConfiguration";
+
+                // Use a dedicated suffix so this preview snapshot never clashes with the
+                // corruption backup JsonManager.Load writes to "<FileLocation>.bak".
+                string backupLocation = App.FastFlags.FileLocation + ".reset.bak";
+
                 if (value)
                 {
+                    // Snapshot the live flags, then persist that snapshot to disk BEFORE clearing
+                    // the live singleton. If a Save() runs while the preview is active it would
+                    // otherwise write an empty config, and a navigation/crash would drop the only
+                    // in-memory copy — the on-disk snapshot lets the flags always be recovered.
                     _preResetFlags = new(App.FastFlags.Prop);
+
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(backupLocation)!);
+                        string contents = JsonSerializer.Serialize(_preResetFlags, new JsonSerializerOptions { WriteIndented = true });
+                        File.WriteAllText(backupLocation, contents);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                    }
+
                     App.FastFlags.Prop.Clear();
                 }
                 else
                 {
-                    App.FastFlags.Prop = _preResetFlags!;
+                    // Restore from the in-memory snapshot when present; fall back to the on-disk
+                    // snapshot (survives navigation/crash) and finally to an empty config.
+                    Dictionary<string, object>? restored = _preResetFlags;
+
+                    if (restored is null)
+                    {
+                        try
+                        {
+                            if (File.Exists(backupLocation))
+                                restored = JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(backupLocation));
+                        }
+                        catch (Exception ex)
+                        {
+                            App.Logger.WriteException(LOG_IDENT, ex);
+                        }
+                    }
+
+                    App.FastFlags.Prop = restored ?? new();
                     _preResetFlags = null;
+
+                    try
+                    {
+                        if (File.Exists(backupLocation))
+                            File.Delete(backupLocation);
+                    }
+                    catch (Exception ex)
+                    {
+                        App.Logger.WriteException(LOG_IDENT, ex);
+                    }
                 }
 
                 RequestPageReloadEvent?.Invoke(this, EventArgs.Empty);

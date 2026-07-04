@@ -78,7 +78,16 @@ namespace RiftStrap.Features.FPSUnlocker
                     ? rx.Replace(xml, node, 1)
                     : xml.Replace("</roblox>", "\t" + node + "\r\n</roblox>");
 
-                File.WriteAllText(GlobalSettingsFile, xml);
+                // Take a one-time backup before the first edit so a bad regex replacement
+                // can be recovered, then write atomically (tmp + replace) so a crash mid-write
+                // can't corrupt the shared Roblox settings file.
+                string bak = GlobalSettingsFile + ".bak";
+                if (!File.Exists(bak))
+                    File.Copy(GlobalSettingsFile, bak);
+
+                string tmp = GlobalSettingsFile + ".tmp";
+                File.WriteAllText(tmp, xml);
+                File.Move(tmp, GlobalSettingsFile, true);
                 App.Logger.WriteLine("SmartFPS", $"Set in-game FramerateCap = {fps}");
                 return true;
             }
@@ -129,10 +138,12 @@ namespace RiftStrap.Features.FPSUnlocker
 
             return current switch
             {
+                // Quality (cap == monitor Hz) must be detected before the 30/60 literals,
+                // otherwise a 60 Hz (or 30 Hz) monitor misclassifies Quality as Balanced/Performance.
+                _ when current == monitorHz => FPSPreset.Quality,
                 30 => FPSPreset.Performance,
                 60 => FPSPreset.Balanced,
                 9999 => FPSPreset.Unlimited,
-                _ when current == monitorHz => FPSPreset.Quality,
                 _ => FPSPreset.Custom
             };
         }

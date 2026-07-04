@@ -40,7 +40,7 @@ namespace RiftStrap.Features.FastFlagProfiles
             return profiles.OrderBy(p => p.Name).ToList();
         }
 
-        public FlagProfile SaveCurrentAsProfile(string name, string description = "")
+        public FlagProfile? SaveCurrentAsProfile(string name, string description = "")
         {
             var profile = new FlagProfile
             {
@@ -59,6 +59,7 @@ namespace RiftStrap.Features.FastFlagProfiles
             catch (Exception ex)
             {
                 App.Logger.WriteLine("FlagProfiles", $"Failed to save profile {name}: {ex.Message}");
+                return null;
             }
 
             return profile;
@@ -80,6 +81,10 @@ namespace RiftStrap.Features.FastFlagProfiles
 
                 foreach (var (key, value) in profile.Flags)
                     App.FastFlags.SetValue(key, value);
+
+                // re-apply mandatory invariants that FastFlagManager.Load enforces,
+                // so loading a profile can't drop FFlagHandleAltEnterFullscreenManually
+                App.FastFlags.SetPreset("Rendering.ManualFullscreen", "False");
 
                 App.FastFlags.Save();
                 App.Logger.WriteLine("FlagProfiles", $"Loaded profile: {profile.Name}");
@@ -115,7 +120,13 @@ namespace RiftStrap.Features.FastFlagProfiles
                 var profile = JsonSerializer.Deserialize<FlagProfile>(json);
                 if (profile == null) return null;
 
-                var outPath = Path.Combine(outputDir, $"{profile.Name.Replace(" ", "_")}_flags.json");
+                var safeName = profile.Name;
+                foreach (var c in Path.GetInvalidFileNameChars())
+                    safeName = safeName.Replace(c, '_');
+                safeName = safeName.Replace(' ', '_');
+
+                var fileName = Path.GetFileName($"{safeName}_flags.json");
+                var outPath = Path.Combine(outputDir, fileName);
                 File.WriteAllText(outPath, json);
                 return outPath;
             }
